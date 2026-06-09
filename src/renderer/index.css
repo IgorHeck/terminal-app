@@ -76,6 +76,16 @@
   --code-size: 13px;
 }
 
+/* Realce de sintaxe do editor (DESIGN §5) */
+.tk-kw { color: #c39bff; }
+.tk-str { color: #93dd9b; }
+.tk-com { color: #5e5e68; font-style: italic; }
+.tk-num { color: #e6a96b; }
+.tk-type { color: #74b6ec; }
+.tk-fn { color: #46d3e6; }
+.tk-id { color: #d6d6dc; }
+.tk-punc { color: #9a9aa4; }
+
 /* Glow opcional no terminal (efeito CRT leve) */
 [data-glow='on'] .xterm-rows {
   text-shadow: var(--term-glow);
