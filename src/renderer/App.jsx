@@ -7,7 +7,7 @@ import EditorTabs from './components/EditorTabs.jsx'
 import Editor from './components/Editor.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import TabBar from './components/TabBar.jsx'
-import Terminal from './components/Terminal.jsx'
+import TerminalPanes from './components/TerminalPanes.jsx'
 import RunPanel from './components/RunPanel.jsx'
 import ProjectModal from './components/ProjectModal.jsx'
 import ConfirmModal from './components/ConfirmModal.jsx'
@@ -121,7 +121,7 @@ export default function App() {
       const count = (tabsByProject[project.id] || []).length + 1
       const tab = {
         id,
-        ptyId,
+        panes: [ptyId],
         name: kind === 'run' ? `run ${count}` : `shell ${count}`,
         kind,
         status: 'idle'
@@ -136,11 +136,30 @@ export default function App() {
   )
 
   const closeTab = useCallback((projectId, tab) => {
-    window.api.pty.kill(tab.ptyId)
+    ;(tab.panes || []).forEach((ptyId) => window.api.pty.kill(ptyId))
     setTabsByProject((prev) => {
       const next = (prev[projectId] || []).filter((t) => t.id !== tab.id)
       return { ...prev, [projectId]: next }
     })
+  }, [])
+
+  // ---- split: adicionar um pane (novo PTY) à aba ----
+  const splitTerminal = useCallback(async (project, tab) => {
+    const ptyId = await window.api.pty.create({ projectId: project.id, shell: project.shell, cwd: project.cwd })
+    setTabsByProject((prev) => ({
+      ...prev,
+      [project.id]: (prev[project.id] || []).map((t) => (t.id === tab.id ? { ...t, panes: [...t.panes, ptyId] } : t))
+    }))
+  }, [])
+
+  const closePane = useCallback((projectId, tabId, ptyId) => {
+    window.api.pty.kill(ptyId)
+    setTabsByProject((prev) => ({
+      ...prev,
+      [projectId]: (prev[projectId] || []).map((t) =>
+        t.id === tabId ? { ...t, panes: t.panes.filter((p) => p !== ptyId) } : t
+      )
+    }))
   }, [])
 
   // ---- CRUD de projetos ----
@@ -339,10 +358,20 @@ export default function App() {
                 onSelect={(t) => setActiveTabByProject((prev) => ({ ...prev, [activeProjectId]: t.id }))}
                 onClose={(t) => closeTab(activeProjectId, t)}
                 onNew={() => newTerminal(activeProject)}
+                onSplit={() => {
+                  const t = tabs.find((x) => x.id === activeTabId)
+                  if (t) splitTerminal(activeProject, t)
+                }}
               />
               <div className="flex-1 relative bg-bg-term min-h-0">
                 {tabs.map((t) => (
-                  <Terminal key={t.id} tab={t} active={t.id === activeTabId} accentKey={tweaks.accent} />
+                  <TerminalPanes
+                    key={t.id}
+                    tab={t}
+                    active={t.id === activeTabId}
+                    accentKey={tweaks.accent}
+                    onClosePane={(ptyId) => closePane(activeProjectId, t.id, ptyId)}
+                  />
                 ))}
                 {tabs.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-sm">

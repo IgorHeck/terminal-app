@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, onNew }) {
+export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, onNew, onSplit }) {
   return (
     <div className="h-10 flex items-stretch bg-panel-2 border-b border-border-soft">
       <div className="flex items-stretch overflow-x-auto">
@@ -35,6 +35,15 @@ export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, 
           )
         })}
       </div>
+      {tabs.length > 0 && (
+        <button
+          onClick={onSplit}
+          title="Dividir terminal"
+          className="w-9 flex items-center justify-center text-text-3 hover:text-text hover:bg-surface-hi"
+        >
+          ⊞
+        </button>
+      )}
       <button
         onClick={onNew}
         title="Novo terminal"
