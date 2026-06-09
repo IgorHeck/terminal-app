@@ -96,6 +96,12 @@ export default function App() {
     []
   )
 
+  // ---- selecionar um terminal a partir da sidebar (accordion) ----
+  const selectTab = useCallback((project, tab) => {
+    setActiveProjectId(project.id)
+    setActiveTabByProject((prev) => ({ ...prev, [project.id]: tab.id }))
+  }, [])
+
   const deleteProject = useCallback(async (project) => {
     await window.api.projects.remove(project.id)
     setProjects((prev) => prev.filter((p) => p.id !== project.id))
@@ -125,10 +131,15 @@ export default function App() {
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
+        activeTabByProject={activeTabByProject}
+        tabsByProject={tabsByProject}
         onSelect={(p) => setActiveProjectId(p.id)}
         onAdd={() => setModalProject(null)}
         onEdit={(p) => setModalProject(p)}
         onDelete={deleteProject}
+        onSelectTab={selectTab}
+        onCloseTab={(p, t) => closeTab(p.id, t)}
+        onNewTerminal={(p) => newTerminal(p)}
         width={sidebarWidth}
       />
       <Divider axis="x" onPointerDown={onSidebarResize} />
