@@ -16,8 +16,14 @@ export const DENSITIES = [
   { id: 'roomy', label: 'roomy' }
 ]
 
+export const RUN_LAYOUTS = [
+  { id: 'stacked', label: 'empilhado' },
+  { id: 'side', label: 'lado a lado' },
+  { id: 'tabs', label: 'abas' }
+]
+
 const KEY = 'terminal-app.tweaks'
-const DEFAULTS = { accent: 'indigo', density: 'roomy', glow: false, showRail: true }
+const DEFAULTS = { accent: 'indigo', density: 'roomy', glow: false, showRail: true, runLayout: 'stacked' }
 
 function load() {
   try {
