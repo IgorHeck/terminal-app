@@ -22,6 +22,7 @@ export function addProject(project) {
     color: project.color || '#6366f1',
     cwd: project.cwd || homedir(),
     shell: project.shell || null,
+    profiles: Array.isArray(project.profiles) ? project.profiles : [],
     createdAt: new Date().toISOString()
   }
   projects.push(newProject)

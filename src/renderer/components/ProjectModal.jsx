@@ -9,6 +9,9 @@ export default function ProjectModal({ project, onSave, onCancel }) {
   const [color, setColor] = useState(COLORS[0])
   const [cwd, setCwd] = useState('')
   const [shell, setShell] = useState('')
+  const [profiles, setProfiles] = useState([])
+  const [profName, setProfName] = useState('')
+  const [profShell, setProfShell] = useState(SHELLS[0])
 
   useEffect(() => {
     if (project) {
@@ -16,8 +19,15 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       setColor(project.color || COLORS[0])
       setCwd(project.cwd || '')
       setShell(project.shell || '')
+      setProfiles(project.profiles || [])
     }
   }, [project])
+
+  function addProfile() {
+    if (!profName.trim() || !profShell.trim()) return
+    setProfiles((prev) => [...prev, { name: profName.trim(), shell: profShell.trim() }])
+    setProfName('')
+  }
 
   function submit(e) {
     e.preventDefault()
@@ -27,7 +37,8 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       name: name.trim(),
       color,
       cwd: cwd.trim(),
-      shell: shell.trim() || null
+      shell: shell.trim() || null,
+      profiles
     })
   }
 
@@ -73,6 +84,47 @@ export default function ProjectModal({ project, onSave, onCancel }) {
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+
+        <label className="block text-[12px] text-text-2 mb-1.5">Perfis de shell (opcional)</label>
+        <div className="mb-2 flex flex-col gap-1">
+          {profiles.map((p, i) => (
+            <div key={i} className="flex items-center gap-2 text-[12px] font-mono bg-bg-term border border-border-soft rounded-lg px-2 h-8">
+              <span className="text-text truncate flex-1">{p.name}</span>
+              <span className="text-text-3">{p.shell}</span>
+              <button
+                type="button"
+                onClick={() => setProfiles((prev) => prev.filter((_, j) => j !== i))}
+                className="w-5 h-5 rounded text-text-3 hover:text-red hover:bg-surface-hi"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-4">
+          <input
+            value={profName}
+            onChange={(e) => setProfName(e.target.value)}
+            placeholder="nome do perfil"
+            className="flex-1 h-9 px-3 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          />
+          <select
+            value={profShell}
+            onChange={(e) => setProfShell(e.target.value)}
+            className="h-9 px-2 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          >
+            {SHELLS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={addProfile}
+            className="h-9 px-3 rounded-lg text-sm text-text-2 bg-surface hover:bg-surface-hi"
+          >
+            +
+          </button>
+        </div>
 
         <label className="block text-[12px] text-text-2 mb-2">Cor</label>
         <div className="flex gap-2 mb-6">
