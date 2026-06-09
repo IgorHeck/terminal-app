@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TitleBar from './components/TitleBar.jsx'
 import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import FileTree from './components/FileTree.jsx'
+import Editor from './components/Editor.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import TabBar from './components/TabBar.jsx'
 import Terminal from './components/Terminal.jsx'
@@ -20,6 +22,10 @@ export default function App() {
   const [tabsByProject, setTabsByProject] = useState({})
   const [activeTabByProject, setActiveTabByProject] = useState({})
 
+  // arquivos abertos no editor por projeto: { [projectId]: { path, name }[] }
+  const [openFilesByProject, setOpenFilesByProject] = useState({})
+  const [activeFileByProject, setActiveFileByProject] = useState({})
+
   const [modalProject, setModalProject] = useState(undefined) // undefined=fechado, null=novo, obj=editar
   const [confirm, setConfirm] = useState(null) // { ptyId, command, reason }
   const [activeView, setActiveView] = useState('projects') // rail de atividades
@@ -29,10 +35,15 @@ export default function App() {
   const [sidebarWidth, onSidebarResize] = useResizable({ axis: 'x', initial: 220, min: 180, max: 360 })
   // altura do terminal integrado (DESIGN §9: mínimo 120px; cresce arrastando ↕ para cima)
   const [termHeight, onTermResize] = useResizable({ axis: 'y', initial: 300, min: 120, max: 900, invert: true })
+  // largura do explorador (DESIGN §9: limites 180–420px)
+  const [explorerWidth, onExplorerResize] = useResizable({ axis: 'x', initial: 244, min: 180, max: 420 })
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
   const activeTabId = activeTabByProject[activeProjectId] || null
+  const openFiles = openFilesByProject[activeProjectId] || []
+  const activeFilePath = activeFileByProject[activeProjectId] || null
+  const activeFile = openFiles.find((f) => f.path === activeFilePath) || null
 
   // ---- carregar projetos persistidos ----
   useEffect(() => {
@@ -98,6 +109,29 @@ export default function App() {
     []
   )
 
+  // ---- abrir/fechar arquivos no editor ----
+  const openFile = useCallback((entry) => {
+    if (!entry || entry.isDir) return
+    const pid = activeProjectId
+    setOpenFilesByProject((prev) => {
+      const list = prev[pid] || []
+      if (list.some((f) => f.path === entry.path)) return prev
+      return { ...prev, [pid]: [...list, { path: entry.path, name: entry.name }] }
+    })
+    setActiveFileByProject((prev) => ({ ...prev, [pid]: entry.path }))
+  }, [activeProjectId])
+
+  const closeFile = useCallback((file) => {
+    const pid = activeProjectId
+    const remaining = (openFilesByProject[pid] || []).filter((f) => f.path !== file.path)
+    setOpenFilesByProject((prev) => ({ ...prev, [pid]: remaining }))
+    setActiveFileByProject((cur) => {
+      if (cur[pid] !== file.path) return cur
+      const next = remaining[remaining.length - 1]
+      return { ...cur, [pid]: next ? next.path : null }
+    })
+  }, [activeProjectId, openFilesByProject])
+
   // ---- selecionar um terminal a partir da sidebar (accordion) ----
   const selectTab = useCallback((project, tab) => {
     setActiveProjectId(project.id)
@@ -146,13 +180,23 @@ export default function App() {
       />
       <Divider axis="x" onPointerDown={onSidebarResize} />
 
+      {activeProject && (
+        <>
+          <FileTree
+            root={activeProject.cwd}
+            activeFile={activeFilePath}
+            onOpenFile={openFile}
+            width={explorerWidth}
+          />
+          <Divider axis="x" onPointerDown={onExplorerResize} />
+        </>
+      )}
+
       <div className="flex-1 flex flex-col min-w-0">
         {activeProject ? (
           <>
-            {/* Editor de código (placeholder até a Fase 2) */}
-            <div className="flex-1 min-h-0 bg-bg-editor flex items-center justify-center text-text-4 font-mono text-sm">
-              Editor de código — em breve (Fase 2)
-            </div>
+            {/* Editor de código */}
+            <Editor file={activeFile} project={activeProject} />
 
             {/* Divisória ↕ entre editor e terminal */}
             <Divider axis="y" onPointerDown={onTermResize} />
