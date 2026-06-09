@@ -8,12 +8,19 @@ import Editor from './components/Editor.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import TabBar from './components/TabBar.jsx'
 import Terminal from './components/Terminal.jsx'
+import RunPanel from './components/RunPanel.jsx'
 import ProjectModal from './components/ProjectModal.jsx'
 import ConfirmModal from './components/ConfirmModal.jsx'
+import RunProcessModal from './components/RunProcessModal.jsx'
 import SettingsPanel from './components/SettingsPanel.jsx'
 import Divider from './components/Divider.jsx'
 import { useTweaks } from './hooks/useTweaks.js'
 import { useResizable } from './hooks/useResizable.js'
+
+// aplica um patch num processo Run específico dentro do mapa por projeto
+function patchProc(map, projectId, procId, patch) {
+  return { ...map, [projectId]: (map[projectId] || []).map((p) => (p.id === procId ? { ...p, ...patch } : p)) }
+}
 
 export default function App() {
   const [projects, setProjects] = useState([])
@@ -27,6 +34,10 @@ export default function App() {
   const [openFilesByProject, setOpenFilesByProject] = useState({})
   const [activeFileByProject, setActiveFileByProject] = useState({})
 
+  // processos do painel Run por projeto: { [projectId]: RunProc[] }
+  const [runProcessesByProject, setRunProcessesByProject] = useState({})
+  const [runModalOpen, setRunModalOpen] = useState(false)
+
   const [modalProject, setModalProject] = useState(undefined) // undefined=fechado, null=novo, obj=editar
   const [confirm, setConfirm] = useState(null) // { ptyId, command, reason }
   const [activeView, setActiveView] = useState('projects') // rail de atividades
@@ -38,6 +49,8 @@ export default function App() {
   const [termHeight, onTermResize] = useResizable({ axis: 'y', initial: 300, min: 120, max: 900, invert: true })
   // largura do explorador (DESIGN §9: limites 180–420px)
   const [explorerWidth, onExplorerResize] = useResizable({ axis: 'x', initial: 244, min: 180, max: 420 })
+  // largura do painel Run (DESIGN §9: 280–640px; ancorado à direita → invert)
+  const [runWidth, onRunResize] = useResizable({ axis: 'x', initial: 386, min: 280, max: 640, invert: true })
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
@@ -45,6 +58,7 @@ export default function App() {
   const openFiles = openFilesByProject[activeProjectId] || []
   const activeFilePath = activeFileByProject[activeProjectId] || null
   const activeFile = openFiles.find((f) => f.path === activeFilePath) || null
+  const runProcesses = runProcessesByProject[activeProjectId] || []
 
   // ---- carregar projetos persistidos ----
   useEffect(() => {
@@ -57,6 +71,27 @@ export default function App() {
   // ---- assinar pedidos de confirmação do guard ----
   useEffect(() => {
     const off = window.api.pty.onConfirm((payload) => setConfirm(payload))
+    return off
+  }, [])
+
+  // ---- ao sair, marcar o processo Run correspondente como parado ----
+  useEffect(() => {
+    const off = window.api.pty.onExit(({ ptyId }) => {
+      setRunProcessesByProject((prev) => {
+        let changed = false
+        const next = {}
+        for (const [pid, list] of Object.entries(prev)) {
+          next[pid] = list.map((p) => {
+            if (p.ptyId === ptyId && p.status === 'running') {
+              changed = true
+              return { ...p, status: 'stopped' }
+            }
+            return p
+          })
+        }
+        return changed ? next : prev
+      })
+    })
     return off
   }, [])
 
@@ -137,6 +172,39 @@ export default function App() {
     })
   }, [activeProjectId, openFilesByProject])
 
+  // ---- processos do painel Run ----
+  const addRunProcess = useCallback((data) => {
+    const pid = activeProjectId
+    const proc = { id: `run_${Date.now()}`, name: data.name, command: data.command, port: data.port, ptyId: null, status: 'idle' }
+    setRunProcessesByProject((prev) => ({ ...prev, [pid]: [...(prev[pid] || []), proc] }))
+    setRunModalOpen(false)
+  }, [activeProjectId])
+
+  const startRunProcess = useCallback(async (proc) => {
+    const project = activeProject
+    if (!project) return
+    const ptyId = await window.api.pty.create({ projectId: project.id, shell: project.shell, cwd: project.cwd })
+    window.api.pty.write(ptyId, proc.command + '\r')
+    setRunProcessesByProject((prev) => patchProc(prev, project.id, proc.id, { ptyId, status: 'running' }))
+  }, [activeProject])
+
+  const stopRunProcess = useCallback((proc) => {
+    if (proc.ptyId) window.api.pty.kill(proc.ptyId)
+    setRunProcessesByProject((prev) => patchProc(prev, activeProjectId, proc.id, { status: 'stopped' }))
+  }, [activeProjectId])
+
+  const removeRunProcess = useCallback((proc) => {
+    if (proc.ptyId && proc.status === 'running') window.api.pty.kill(proc.ptyId)
+    setRunProcessesByProject((prev) => ({
+      ...prev,
+      [activeProjectId]: (prev[activeProjectId] || []).filter((p) => p.id !== proc.id)
+    }))
+  }, [activeProjectId])
+
+  const openRunPort = useCallback((proc) => {
+    if (proc.port) window.api.app.openExternal(`http://localhost:${proc.port}`)
+  }, [])
+
   // ---- selecionar um terminal a partir da sidebar (accordion) ----
   const selectTab = useCallback((project, tab) => {
     setActiveProjectId(project.id)
@@ -147,6 +215,10 @@ export default function App() {
     await window.api.projects.remove(project.id)
     setProjects((prev) => prev.filter((p) => p.id !== project.id))
     setTabsByProject((prev) => {
+      const { [project.id]: _, ...rest } = prev
+      return rest
+    })
+    setRunProcessesByProject((prev) => {
       const { [project.id]: _, ...rest } = prev
       return rest
     })
@@ -243,6 +315,22 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {activeProject && (
+        <>
+          <Divider axis="x" onPointerDown={onRunResize} />
+          <RunPanel
+            processes={runProcesses}
+            project={activeProject}
+            width={runWidth}
+            onNew={() => setRunModalOpen(true)}
+            onStart={startRunProcess}
+            onStop={stopRunProcess}
+            onRemove={removeRunProcess}
+            onOpenPort={openRunPort}
+          />
+        </>
+      )}
       </div>
       <StatusBar project={activeProject} />
 
@@ -264,6 +352,10 @@ export default function App() {
           onChange={setTweak}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
+
+      {runModalOpen && (
+        <RunProcessModal onSave={addRunProcess} onCancel={() => setRunModalOpen(false)} />
       )}
 
       {modalProject !== undefined && (
