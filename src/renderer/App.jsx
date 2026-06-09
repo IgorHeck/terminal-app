@@ -323,6 +323,8 @@ export default function App() {
             processes={runProcesses}
             project={activeProject}
             width={runWidth}
+            layout={tweaks.runLayout}
+            onSetLayout={(l) => setTweak({ runLayout: l })}
             onNew={() => setRunModalOpen(true)}
             onStart={startRunProcess}
             onStop={stopRunProcess}

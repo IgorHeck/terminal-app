@@ -1,5 +1,5 @@
 import React from 'react'
-import { ACCENTS, DENSITIES } from '../hooks/useTweaks.js'
+import { ACCENTS, DENSITIES, RUN_LAYOUTS } from '../hooks/useTweaks.js'
 
 function Label({ children }) {
   return <div className="text-[11px] text-text-3 uppercase tracking-wide mb-2">{children}</div>
@@ -67,6 +67,11 @@ export default function SettingsPanel({ tweaks, onChange, onClose }) {
         <Label>Densidade</Label>
         <div className="mb-4">
           <Segmented options={DENSITIES} value={tweaks.density} onChange={(v) => onChange({ density: v })} />
+        </div>
+
+        <Label>Layout do Run</Label>
+        <div className="mb-4">
+          <Segmented options={RUN_LAYOUTS} value={tweaks.runLayout} onChange={(v) => onChange({ runLayout: v })} />
         </div>
 
         <div className="flex items-center justify-between py-1.5">
