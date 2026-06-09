@@ -13,7 +13,14 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        // emite CommonJS .cjs para o preload carregar de forma confiável
+        // (o projeto é "type":"module", então .js seria tratado como ESM)
+        output: { format: 'cjs', entryFileNames: 'index.cjs' }
+      }
+    }
   },
   renderer: {
     resolve: {

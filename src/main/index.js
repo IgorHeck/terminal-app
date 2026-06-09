@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, session } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync } from 'fs'
@@ -50,7 +50,7 @@ function createWindow() {
     backgroundColor: '#0c0c0e',
     frame: false,
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
@@ -185,9 +185,28 @@ ipcMain.on('pty:kill', (_e, ptyId) => {
 })
 
 // ---------------------------------------------------------------
+// Content-Security-Policy
+// Estrita em produção; relaxada em dev (o Vite usa script inline para o
+// preamble do React Fast Refresh e WebSocket para o HMR).
+// ---------------------------------------------------------------
+function applyCsp() {
+  const isDev = !!process.env.ELECTRON_RENDERER_URL
+  const csp = isDev
+    ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: ws://localhost:5173 http://localhost:5173 https://fonts.googleapis.com https://fonts.gstatic.com"
+    : "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:"
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] }
+    })
+  })
+}
+
+// ---------------------------------------------------------------
 // Ciclo de vida do app
 // ---------------------------------------------------------------
 app.whenReady().then(() => {
+  applyCsp()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
