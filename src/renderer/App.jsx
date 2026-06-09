@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TitleBar from './components/TitleBar.jsx'
+import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TabBar from './components/TabBar.jsx'
 import Terminal from './components/Terminal.jsx'
@@ -16,6 +17,7 @@ export default function App() {
 
   const [modalProject, setModalProject] = useState(undefined) // undefined=fechado, null=novo, obj=editar
   const [confirm, setConfirm] = useState(null) // { ptyId, command, reason }
+  const [activeView, setActiveView] = useState('projects') // rail de atividades
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
@@ -104,6 +106,7 @@ export default function App() {
     <div className="flex flex-col h-full">
       <TitleBar project={activeProject} />
       <div className="flex flex-1 min-h-0">
+      <ActivityRail activeView={activeView} onSelectView={setActiveView} />
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
