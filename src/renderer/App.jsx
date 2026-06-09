@@ -8,7 +8,9 @@ import Terminal from './components/Terminal.jsx'
 import ProjectModal from './components/ProjectModal.jsx'
 import ConfirmModal from './components/ConfirmModal.jsx'
 import SettingsPanel from './components/SettingsPanel.jsx'
+import Divider from './components/Divider.jsx'
 import { useTweaks } from './hooks/useTweaks.js'
+import { useResizable } from './hooks/useResizable.js'
 
 export default function App() {
   const [projects, setProjects] = useState([])
@@ -23,6 +25,8 @@ export default function App() {
   const [activeView, setActiveView] = useState('projects') // rail de atividades
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [tweaks, setTweak] = useTweaks()
+  // largura da sidebar (DESIGN §9: limites 180–360px)
+  const [sidebarWidth, onSidebarResize] = useResizable({ axis: 'x', initial: 220, min: 180, max: 360 })
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
@@ -125,7 +129,9 @@ export default function App() {
         onAdd={() => setModalProject(null)}
         onEdit={(p) => setModalProject(p)}
         onDelete={deleteProject}
+        width={sidebarWidth}
       />
+      <Divider axis="x" onPointerDown={onSidebarResize} />
 
       <div className="flex-1 flex flex-col min-w-0">
         {activeProject ? (

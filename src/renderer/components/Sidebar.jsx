@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 
-export default function Sidebar({ projects, activeProjectId, onSelect, onAdd, onEdit, onDelete }) {
+export default function Sidebar({ projects, activeProjectId, onSelect, onAdd, onEdit, onDelete, width = 220 }) {
   const [hovered, setHovered] = useState(null)
 
   return (
-    <div className="w-[220px] flex-shrink-0 bg-rail border-r border-border-soft flex flex-col h-full">
+    <div
+      style={{ width }}
+      className="flex-shrink-0 bg-rail border-r border-border-soft flex flex-col h-full"
+    >
       <div className="h-11 flex items-center justify-between px-3 border-b border-border-soft">
         <span className="text-[11px] font-semibold text-text-3 uppercase tracking-wider">
           Projetos
