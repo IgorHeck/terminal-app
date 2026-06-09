@@ -4,15 +4,15 @@ export default function Sidebar({ projects, activeProjectId, onSelect, onAdd, on
   const [hovered, setHovered] = useState(null)
 
   return (
-    <div className="w-[220px] flex-shrink-0 bg-[#09090b] border-r border-[#1d1d22] flex flex-col h-full">
-      <div className="h-11 flex items-center justify-between px-3 border-b border-[#1d1d22]">
-        <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+    <div className="w-[220px] flex-shrink-0 bg-rail border-r border-border-soft flex flex-col h-full">
+      <div className="h-11 flex items-center justify-between px-3 border-b border-border-soft">
+        <span className="text-[11px] font-semibold text-text-3 uppercase tracking-wider">
           Projetos
         </span>
         <button
           onClick={onAdd}
           title="Novo projeto"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-zinc-500 hover:text-zinc-100 hover:bg-[#1b1b20]"
+          className="w-6 h-6 rounded-btn flex items-center justify-center text-text-3 hover:text-text hover:bg-surface"
         >
           +
         </button>
@@ -27,8 +27,9 @@ export default function Sidebar({ projects, activeProjectId, onSelect, onAdd, on
               onClick={() => onSelect(project)}
               onMouseEnter={() => setHovered(project.id)}
               onMouseLeave={() => setHovered(null)}
-              className={`group relative flex items-center gap-2.5 h-8 px-2 rounded-md cursor-pointer transition-colors ${
-                isActive ? 'bg-[#24242a] text-zinc-100' : 'text-zinc-400 hover:bg-[#1b1b20] hover:text-zinc-100'
+              style={{ height: 'var(--row-h)' }}
+              className={`group relative flex items-center gap-2.5 px-2 rounded-btn cursor-pointer transition-colors ${
+                isActive ? 'bg-surface-hi text-text' : 'text-text-2 hover:bg-surface hover:text-text'
               }`}
             >
               {isActive && (
@@ -44,14 +45,14 @@ export default function Sidebar({ projects, activeProjectId, onSelect, onAdd, on
                 <span className="flex gap-0.5">
                   <button
                     onClick={(e) => { e.stopPropagation(); onEdit(project) }}
-                    className="w-[18px] h-[18px] rounded text-zinc-500 hover:text-zinc-100 hover:bg-[#24242a] text-xs"
+                    className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi text-xs"
                     title="Editar"
                   >
                     ✎
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); if (confirm(`Excluir "${project.name}"?`)) onDelete(project) }}
-                    className="w-[18px] h-[18px] rounded text-zinc-500 hover:text-red-400 hover:bg-[#24242a] text-sm"
+                    className="w-[18px] h-[18px] rounded text-text-3 hover:text-red hover:bg-surface-hi text-sm"
                     title="Excluir"
                   >
                     ×
@@ -63,7 +64,7 @@ export default function Sidebar({ projects, activeProjectId, onSelect, onAdd, on
         })}
 
         {projects.length === 0 && (
-          <div className="text-[12px] text-zinc-600 font-mono italic px-2 py-3">
+          <div className="text-[12px] text-text-4 font-mono italic px-2 py-3">
             nenhum projeto ainda
           </div>
         )}
