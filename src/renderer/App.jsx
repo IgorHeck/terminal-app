@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import TitleBar from './components/TitleBar.jsx'
 import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -13,6 +13,7 @@ import ProjectModal from './components/ProjectModal.jsx'
 import ConfirmModal from './components/ConfirmModal.jsx'
 import RunProcessModal from './components/RunProcessModal.jsx'
 import SettingsPanel from './components/SettingsPanel.jsx'
+import CommandPalette from './components/CommandPalette.jsx'
 import Divider from './components/Divider.jsx'
 import { useTweaks } from './hooks/useTweaks.js'
 import { useResizable } from './hooks/useResizable.js'
@@ -42,6 +43,7 @@ export default function App() {
   const [confirm, setConfirm] = useState(null) // { ptyId, command, reason }
   const [activeView, setActiveView] = useState('projects') // rail de atividades
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [tweaks, setTweak] = useTweaks()
   // largura da sidebar (DESIGN §9: limites 180–360px)
   const [sidebarWidth, onSidebarResize] = useResizable({ axis: 'x', initial: 220, min: 180, max: 360 })
@@ -72,6 +74,18 @@ export default function App() {
   useEffect(() => {
     const off = window.api.pty.onConfirm((payload) => setConfirm(payload))
     return off
+  }, [])
+
+  // ---- atalho global Ctrl/Cmd+K para a paleta de comandos ----
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((o) => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   // ---- ao sair, marcar o processo Run correspondente como parado ----
@@ -230,9 +244,38 @@ export default function App() {
     setConfirm(null)
   }
 
+  // ---- itens da paleta de comandos (projetos, terminais, arquivos, Run) ----
+  const paletteItems = useMemo(() => {
+    const items = []
+    for (const p of projects) {
+      items.push({ id: `p:${p.id}`, group: 'projeto', label: p.name, color: p.color, run: () => setActiveProjectId(p.id) })
+      for (const tab of tabsByProject[p.id] || []) {
+        items.push({
+          id: `t:${tab.id}`, group: 'terminal', label: tab.name, sub: p.name, color: p.color,
+          run: () => { setActiveProjectId(p.id); setActiveTabByProject((prev) => ({ ...prev, [p.id]: tab.id })) }
+        })
+      }
+      for (const f of openFilesByProject[p.id] || []) {
+        items.push({
+          id: `f:${p.id}:${f.path}`, group: 'arquivo', label: f.name, sub: f.path, color: p.color,
+          run: () => { setActiveProjectId(p.id); setActiveFileByProject((prev) => ({ ...prev, [p.id]: f.path })) }
+        })
+      }
+      for (const proc of runProcessesByProject[p.id] || []) {
+        items.push({ id: `r:${proc.id}`, group: 'run', label: proc.name, sub: p.name, color: p.color, run: () => setActiveProjectId(p.id) })
+      }
+    }
+    return items
+  }, [projects, tabsByProject, openFilesByProject, runProcessesByProject])
+
+  const onPaletteSelect = useCallback((item) => {
+    item.run?.()
+    setPaletteOpen(false)
+  }, [])
+
   return (
     <div className="flex flex-col h-full">
-      <TitleBar project={activeProject} />
+      <TitleBar project={activeProject} onOpenSearch={() => setPaletteOpen(true)} />
       <div className="flex flex-1 min-h-0">
       {tweaks.showRail && (
         <ActivityRail
@@ -355,6 +398,10 @@ export default function App() {
           onChange={setTweak}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
+
+      {paletteOpen && (
+        <CommandPalette items={paletteItems} onClose={() => setPaletteOpen(false)} onSelect={onPaletteSelect} />
       )}
 
       {runModalOpen && (

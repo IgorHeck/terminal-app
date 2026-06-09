@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 
 // Barra de título (44px) — DESIGN.md §6 (1).
 // frame:false na BrowserWindow; arraste via -webkit-app-region.
-export default function TitleBar({ project }) {
+export default function TitleBar({ project, onOpenSearch }) {
   const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function TitleBar({ project }) {
         <button
           type="button"
           title="Busca (Ctrl K)"
+          onClick={onOpenSearch}
           className="h-7 w-full max-w-[420px] flex items-center gap-2 px-3 rounded-btn bg-panel border border-border-soft text-text-3 hover:border-border text-[12px]"
         >
           <span>⌕</span>
