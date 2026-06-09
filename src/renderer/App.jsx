@@ -7,6 +7,8 @@ import TabBar from './components/TabBar.jsx'
 import Terminal from './components/Terminal.jsx'
 import ProjectModal from './components/ProjectModal.jsx'
 import ConfirmModal from './components/ConfirmModal.jsx'
+import SettingsPanel from './components/SettingsPanel.jsx'
+import { useTweaks } from './hooks/useTweaks.js'
 
 export default function App() {
   const [projects, setProjects] = useState([])
@@ -19,6 +21,8 @@ export default function App() {
   const [modalProject, setModalProject] = useState(undefined) // undefined=fechado, null=novo, obj=editar
   const [confirm, setConfirm] = useState(null) // { ptyId, command, reason }
   const [activeView, setActiveView] = useState('projects') // rail de atividades
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [tweaks, setTweak] = useTweaks()
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
@@ -107,7 +111,13 @@ export default function App() {
     <div className="flex flex-col h-full">
       <TitleBar project={activeProject} />
       <div className="flex flex-1 min-h-0">
-      <ActivityRail activeView={activeView} onSelectView={setActiveView} />
+      {tweaks.showRail && (
+        <ActivityRail
+          activeView={activeView}
+          onSelectView={setActiveView}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
+      )}
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
@@ -147,6 +157,26 @@ export default function App() {
       </div>
       </div>
       <StatusBar project={activeProject} />
+
+      {/* fallback para reabrir ajustes quando o rail está oculto */}
+      {!tweaks.showRail && (
+        <button
+          type="button"
+          title="Ajustes"
+          onClick={() => setSettingsOpen(true)}
+          className="fixed left-3 bottom-9 z-30 w-8 h-8 rounded-btn flex items-center justify-center bg-panel border border-border text-text-3 hover:text-text"
+        >
+          ⚙
+        </button>
+      )}
+
+      {settingsOpen && (
+        <SettingsPanel
+          tweaks={tweaks}
+          onChange={setTweak}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
 
       {modalProject !== undefined && (
         <ProjectModal
