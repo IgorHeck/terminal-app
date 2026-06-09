@@ -27,6 +27,8 @@ export default function App() {
   const [tweaks, setTweak] = useTweaks()
   // largura da sidebar (DESIGN §9: limites 180–360px)
   const [sidebarWidth, onSidebarResize] = useResizable({ axis: 'x', initial: 220, min: 180, max: 360 })
+  // altura do terminal integrado (DESIGN §9: mínimo 120px; cresce arrastando ↕ para cima)
+  const [termHeight, onTermResize] = useResizable({ axis: 'y', initial: 300, min: 120, max: 900, invert: true })
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
@@ -147,23 +149,34 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0">
         {activeProject ? (
           <>
-            <TabBar
-              tabs={tabs}
-              activeTabId={activeTabId}
-              project={activeProject}
-              onSelect={(t) => setActiveTabByProject((prev) => ({ ...prev, [activeProjectId]: t.id }))}
-              onClose={(t) => closeTab(activeProjectId, t)}
-              onNew={() => newTerminal(activeProject)}
-            />
-            <div className="flex-1 relative bg-bg-term">
-              {tabs.map((t) => (
-                <Terminal key={t.id} tab={t} active={t.id === activeTabId} />
-              ))}
-              {tabs.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-sm">
-                  Nenhum terminal aberto — clique em + para começar
-                </div>
-              )}
+            {/* Editor de código (placeholder até a Fase 2) */}
+            <div className="flex-1 min-h-0 bg-bg-editor flex items-center justify-center text-text-4 font-mono text-sm">
+              Editor de código — em breve (Fase 2)
+            </div>
+
+            {/* Divisória ↕ entre editor e terminal */}
+            <Divider axis="y" onPointerDown={onTermResize} />
+
+            {/* Terminal integrado */}
+            <div style={{ height: termHeight }} className="flex flex-col flex-shrink-0 min-h-0">
+              <TabBar
+                tabs={tabs}
+                activeTabId={activeTabId}
+                project={activeProject}
+                onSelect={(t) => setActiveTabByProject((prev) => ({ ...prev, [activeProjectId]: t.id }))}
+                onClose={(t) => closeTab(activeProjectId, t)}
+                onNew={() => newTerminal(activeProject)}
+              />
+              <div className="flex-1 relative bg-bg-term min-h-0">
+                {tabs.map((t) => (
+                  <Terminal key={t.id} tab={t} active={t.id === activeTabId} />
+                ))}
+                {tabs.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-sm">
+                    Nenhum terminal aberto — clique em + para começar
+                  </div>
+                )}
+              </div>
             </div>
           </>
         ) : (
