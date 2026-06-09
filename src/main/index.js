@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync } from 'fs'
@@ -100,6 +100,12 @@ ipcMain.handle('fs:readDir', async (_e, dirPath) => {
     .sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1))
 })
 
+// abre uma URL externa no navegador padrão (botão "Abrir :porta" do Run)
+ipcMain.handle('shell:openExternal', (_e, url) => {
+  if (typeof url === 'string' && /^https?:\/\//i.test(url)) return shell.openExternal(url)
+  return false
+})
+
 ipcMain.handle('fs:readFile', async (_e, filePath) => {
   const abs = expandHome(filePath)
   const st = await stat(abs)
@@ -130,7 +136,8 @@ ipcMain.handle('pty:create', (_e, { projectId, shell, cwd } = {}) => {
     projectId,
     shell,
     cwd,
-    onData: (id, data) => sendToRenderer('pty:data', { ptyId: id, data })
+    onData: (id, data) => sendToRenderer('pty:data', { ptyId: id, data }),
+    onExit: (id, exitCode) => sendToRenderer('pty:exit', { ptyId: id, exitCode })
   })
   lineBuffers[ptyId] = ''
   return ptyId
