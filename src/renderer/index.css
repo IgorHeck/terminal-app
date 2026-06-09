@@ -1,8 +1,88 @@
+@import 'xterm/css/xterm.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import 'xterm/css/xterm.css';
+/* =====================================================================
+   Tokens de design (DESIGN.md §2–§5, §10)
+   Fonte única de verdade visual. Os "tweaks" do usuário alteram apenas
+   --accent-rgb, [data-density] e [data-glow] em tempo real.
+   ===================================================================== */
+:root {
+  /* Superfícies */
+  --bg: #0c0c0e;
+  --bg-editor: #0f0f11;
+  --bg-term: #0b0b0d;
+  --panel: #16161a;
+  --panel-2: #1b1b20;
+  --rail: #09090b;
+  --surface: #1b1b20;
+  --surface-hi: #24242a;
+  --border: #26262d;
+  --border-soft: #1d1d22;
+
+  /* Texto */
+  --text: #e9e9ec;
+  --text-2: #aeaeb6;
+  --text-3: #7a7a83;
+  --text-4: #56565f;
+
+  /* Acento (tweakável) — canais RGB p/ suportar alpha no Tailwind */
+  --accent-rgb: 99 102 241; /* #6366f1 índigo (padrão) */
+
+  /* Semântica */
+  --green: #2bd07a;
+  --red: #f1556a;
+  --yellow: #e8c14a;
+  --cyan: #46d3e6;
+  --orange: #f0883e;
+  --purple: #c39bff;
+
+  /* Densidade (padrão: roomy) — DESIGN §4 */
+  --row-h: 30px;
+  --tree-h: 28px;
+  --pad: 12px;
+  --radius: 9px;
+  --radius-btn: 6px;
+  --code-size: 13px;
+
+  /* Glow do terminal (padrão: off) — DESIGN §8 */
+  --term-glow: none;
+}
+
+[data-density='compact'] {
+  --row-h: 22px;
+  --tree-h: 21px;
+  --pad: 6px;
+  --radius: 5px;
+  --radius-btn: 5px;
+  --code-size: 12px;
+}
+[data-density='cozy'] {
+  --row-h: 26px;
+  --tree-h: 24px;
+  --pad: 9px;
+  --radius: 7px;
+  --radius-btn: 6px;
+  --code-size: 12.5px;
+}
+[data-density='roomy'] {
+  --row-h: 30px;
+  --tree-h: 28px;
+  --pad: 12px;
+  --radius: 9px;
+  --radius-btn: 6px;
+  --code-size: 13px;
+}
+
+/* Glow opcional no terminal (efeito CRT leve) */
+[data-glow='on'] .xterm-rows {
+  text-shadow: var(--term-glow);
+}
+[data-glow='on'] {
+  --term-glow: 0 0 6px currentColor;
+}
 
 * {
   box-sizing: border-box;
@@ -19,8 +99,8 @@ body,
 }
 
 body {
-  background: #0c0c0e;
-  color: #e9e9ec;
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
