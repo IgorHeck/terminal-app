@@ -111,10 +111,10 @@ export default function App() {
 
   // ---- criar nova aba/terminal ----
   const newTerminal = useCallback(
-    async (project, kind = 'shell') => {
+    async (project, kind = 'shell', profile = null) => {
       const ptyId = await window.api.pty.create({
         projectId: project.id,
-        shell: project.shell,
+        shell: profile?.shell || project.shell,
         cwd: project.cwd
       })
       const id = `tab_${Date.now()}`
@@ -122,7 +122,7 @@ export default function App() {
       const tab = {
         id,
         panes: [ptyId],
-        name: kind === 'run' ? `run ${count}` : `shell ${count}`,
+        name: profile?.name || (kind === 'run' ? `run ${count}` : `shell ${count}`),
         kind,
         status: 'idle'
       }
@@ -357,7 +357,7 @@ export default function App() {
                 project={activeProject}
                 onSelect={(t) => setActiveTabByProject((prev) => ({ ...prev, [activeProjectId]: t.id }))}
                 onClose={(t) => closeTab(activeProjectId, t)}
-                onNew={() => newTerminal(activeProject)}
+                onNew={(profile) => newTerminal(activeProject, 'shell', profile)}
                 onSplit={() => {
                   const t = tabs.find((x) => x.id === activeTabId)
                   if (t) splitTerminal(activeProject, t)

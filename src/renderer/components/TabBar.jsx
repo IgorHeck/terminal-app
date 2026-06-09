@@ -1,8 +1,16 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, onNew, onSplit }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const profiles = project?.profiles || []
+
+  function clickNew() {
+    if (profiles.length > 0) setMenuOpen((o) => !o)
+    else onNew()
+  }
+
   return (
-    <div className="h-10 flex items-stretch bg-panel-2 border-b border-border-soft">
+    <div className="h-10 flex items-stretch bg-panel-2 border-b border-border-soft relative">
       <div className="flex items-stretch overflow-x-auto">
         {tabs.map((tab) => {
           const isActive = tab.id === activeTabId
@@ -45,12 +53,36 @@ export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, 
         </button>
       )}
       <button
-        onClick={onNew}
+        onClick={clickNew}
         title="Novo terminal"
         className="w-9 flex items-center justify-center text-text-3 hover:text-text hover:bg-surface-hi"
       >
         +
       </button>
+
+      {menuOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+          <div className="absolute right-0 top-10 z-20 w-44 bg-panel border border-border rounded-token shadow-2xl py-1">
+            <button
+              onClick={() => { setMenuOpen(false); onNew() }}
+              className="w-full text-left px-3 h-8 text-[12px] font-mono text-text-2 hover:bg-surface hover:text-text"
+            >
+              shell padrão
+            </button>
+            {profiles.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => { setMenuOpen(false); onNew(p) }}
+                className="w-full text-left px-3 h-8 text-[12px] font-mono text-text-2 hover:bg-surface hover:text-text flex items-center gap-2"
+              >
+                <span className="truncate flex-1">{p.name}</span>
+                <span className="text-text-4 text-[11px]">{p.shell}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
