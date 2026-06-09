@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import TitleBar from './components/TitleBar.jsx'
 import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import StatusBar from './components/StatusBar.jsx'
 import TabBar from './components/TabBar.jsx'
 import Terminal from './components/Terminal.jsx'
 import ProjectModal from './components/ProjectModal.jsx'
@@ -145,6 +146,7 @@ export default function App() {
         )}
       </div>
       </div>
+      <StatusBar project={activeProject} />
 
       {modalProject !== undefined && (
         <ProjectModal
