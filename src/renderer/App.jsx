@@ -3,6 +3,7 @@ import TitleBar from './components/TitleBar.jsx'
 import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import FileTree from './components/FileTree.jsx'
+import EditorTabs from './components/EditorTabs.jsx'
 import Editor from './components/Editor.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -121,6 +122,10 @@ export default function App() {
     setActiveFileByProject((prev) => ({ ...prev, [pid]: entry.path }))
   }, [activeProjectId])
 
+  const selectFile = useCallback((file) => {
+    setActiveFileByProject((prev) => ({ ...prev, [activeProjectId]: file.path }))
+  }, [activeProjectId])
+
   const closeFile = useCallback((file) => {
     const pid = activeProjectId
     const remaining = (openFilesByProject[pid] || []).filter((f) => f.path !== file.path)
@@ -195,8 +200,17 @@ export default function App() {
       <div className="flex-1 flex flex-col min-w-0">
         {activeProject ? (
           <>
-            {/* Editor de código */}
-            <Editor file={activeFile} project={activeProject} />
+            {/* Abas do editor + editor de código */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              <EditorTabs
+                files={openFiles}
+                activeFile={activeFilePath}
+                project={activeProject}
+                onSelect={selectFile}
+                onClose={closeFile}
+              />
+              <Editor file={activeFile} project={activeProject} />
+            </div>
 
             {/* Divisória ↕ entre editor e terminal */}
             <Divider axis="y" onPointerDown={onTermResize} />

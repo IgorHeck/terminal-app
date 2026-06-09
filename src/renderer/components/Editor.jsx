@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { highlight } from '../highlight.js'
 
 // Editor de código (somente leitura por enquanto) — DESIGN.md §7.
 // Breadcrumb + gutter com números de linha. Realce de sintaxe vem em
@@ -18,6 +19,12 @@ export default function Editor({ file, project }) {
       alive = false
     }
   }, [file?.path])
+
+  // realce só para arquivos não muito grandes (evita travar a UI)
+  const html = useMemo(
+    () => (state.content && state.content.length < 200000 ? highlight(state.content) : null),
+    [state.content]
+  )
 
   if (!file) {
     return (
@@ -62,7 +69,14 @@ export default function Editor({ file, project }) {
                 <div key={i}>{i + 1}</div>
               ))}
             </div>
-            <pre className="py-2 pr-4 text-text whitespace-pre flex-1">{state.content}</pre>
+            {html != null ? (
+              <pre
+                className="py-2 pr-4 text-text whitespace-pre flex-1"
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            ) : (
+              <pre className="py-2 pr-4 text-text whitespace-pre flex-1">{state.content}</pre>
+            )}
           </div>
         )}
       </div>
