@@ -299,7 +299,7 @@ export default function App() {
               />
               <div className="flex-1 relative bg-bg-term min-h-0">
                 {tabs.map((t) => (
-                  <Terminal key={t.id} tab={t} active={t.id === activeTabId} />
+                  <Terminal key={t.id} tab={t} active={t.id === activeTabId} accentKey={tweaks.accent} />
                 ))}
                 {tabs.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-sm">
@@ -324,6 +324,7 @@ export default function App() {
             project={activeProject}
             width={runWidth}
             layout={tweaks.runLayout}
+            accentKey={tweaks.accent}
             onSetLayout={(l) => setTweak({ runLayout: l })}
             onNew={() => setRunModalOpen(true)}
             onStart={startRunProcess}

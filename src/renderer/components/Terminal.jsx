@@ -2,23 +2,29 @@ import React, { useEffect, useRef } from 'react'
 import { Terminal as XTerm } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
 
-const THEME = {
-  background: '#0a0a0c',
+// Cores fixas do tema (DESIGN §5). O acento (cursor/seleção/blue) vem do
+// token --accent-rgb, então acompanha o tweak de acento em tempo real.
+const BASE_THEME = {
+  background: '#0b0b0d',
   foreground: '#e9e9ec',
-  cursor: '#6366f1',
-  selectionBackground: '#6366f155',
   black: '#0a0a0c',
   red: '#f1556a',
   green: '#2bd07a',
   yellow: '#e8c14a',
-  blue: '#6366f1',
   magenta: '#c39bff',
   cyan: '#46d3e6',
   white: '#e9e9ec',
   brightBlack: '#56565f'
 }
 
-export default function Terminal({ tab, active }) {
+function buildTheme() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim()
+  const [r, g, b] = (raw || '99 102 241').split(/\s+/)
+  const rgb = `rgb(${r}, ${g}, ${b})`
+  return { ...BASE_THEME, cursor: rgb, blue: rgb, selectionBackground: `rgba(${r}, ${g}, ${b}, 0.33)` }
+}
+
+export default function Terminal({ tab, active, accentKey }) {
   const hostRef = useRef(null)
   const termRef = useRef(null)
   const fitRef = useRef(null)
@@ -30,7 +36,7 @@ export default function Terminal({ tab, active }) {
       fontSize: 13,
       lineHeight: 1.35,
       cursorBlink: true,
-      theme: THEME,
+      theme: buildTheme(),
       allowProposedApi: true
     })
     const fit = new FitAddon()
@@ -65,6 +71,11 @@ export default function Terminal({ tab, active }) {
       term.dispose()
     }
   }, [tab.ptyId])
+
+  // re-aplica o tema quando o acento muda (tweak)
+  useEffect(() => {
+    if (termRef.current) termRef.current.options.theme = buildTheme()
+  }, [accentKey])
 
   // re-fit ao tornar-se ativo
   useEffect(() => {

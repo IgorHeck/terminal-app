@@ -11,7 +11,7 @@ function dotColor(status, projectColor) {
 
 const LAYOUT_GLYPH = { stacked: '☰', side: '▥', tabs: '▭' }
 
-function ProcessCard({ proc, project, fill, className = '', onStart, onStop, onRemove, onOpenPort }) {
+function ProcessCard({ proc, project, fill, className = '', accentKey, onStart, onStop, onRemove, onOpenPort }) {
   const running = proc.status === 'running'
   return (
     <div className={`flex flex-col ${className}`}>
@@ -43,7 +43,7 @@ function ProcessCard({ proc, project, fill, className = '', onStart, onStop, onR
       </div>
       <div className={`relative bg-bg-term ${fill ? 'flex-1 min-h-0' : 'h-[200px]'}`}>
         {proc.ptyId ? (
-          <Terminal key={proc.ptyId} tab={{ ptyId: proc.ptyId }} active />
+          <Terminal key={proc.ptyId} tab={{ ptyId: proc.ptyId }} active accentKey={accentKey} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-xs">
             parado — clique em ▶ para rodar
@@ -55,9 +55,9 @@ function ProcessCard({ proc, project, fill, className = '', onStart, onStop, onR
 }
 
 // Painel Run (~386px) — DESIGN.md §6 (6), §7. Switcher: empilhado / lado a lado / abas.
-export default function RunPanel({ processes, project, width, layout = 'stacked', onSetLayout, onNew, onStart, onStop, onRemove, onOpenPort }) {
+export default function RunPanel({ processes, project, width, layout = 'stacked', accentKey, onSetLayout, onNew, onStart, onStop, onRemove, onOpenPort }) {
   const [activeRunId, setActiveRunId] = useState(null)
-  const cardHandlers = { project, onStart, onStop, onRemove, onOpenPort }
+  const cardHandlers = { project, accentKey, onStart, onStop, onRemove, onOpenPort }
 
   let body
   if (processes.length === 0) {
