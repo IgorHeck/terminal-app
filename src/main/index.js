@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync } from 'fs'
+import { readdir, readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { createPty, writePty, resizePty, killPty, killAllForProject } from './pty.js'
 import { checkCommand } from './guard.js'
@@ -78,6 +79,35 @@ ipcMain.on('window:maximize', () => {
 })
 ipcMain.on('window:close', () => mainWindow?.close())
 ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
+
+// ---------------------------------------------------------------
+// IPC — Filesystem (explorador + editor, somente leitura)
+// ---------------------------------------------------------------
+function expandHome(p) {
+  if (!p) return homedir()
+  if (p === '~') return homedir()
+  if (p.startsWith('~/') || p.startsWith('~\\')) return join(homedir(), p.slice(2))
+  return p
+}
+
+const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2 MB
+
+ipcMain.handle('fs:readDir', async (_e, dirPath) => {
+  const abs = expandHome(dirPath)
+  const entries = await readdir(abs, { withFileTypes: true })
+  return entries
+    .map((d) => ({ name: d.name, path: join(abs, d.name), isDir: d.isDirectory() }))
+    .sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1))
+})
+
+ipcMain.handle('fs:readFile', async (_e, filePath) => {
+  const abs = expandHome(filePath)
+  const st = await stat(abs)
+  if (st.size > MAX_FILE_BYTES) return { content: '', tooLarge: true, binary: false }
+  const buf = await readFile(abs)
+  const binary = buf.includes(0)
+  return { content: binary ? '' : buf.toString('utf8'), tooLarge: false, binary }
+})
 
 // ---------------------------------------------------------------
 // IPC — Projetos

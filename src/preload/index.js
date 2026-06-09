@@ -29,6 +29,10 @@ const api = {
       return () => ipcRenderer.removeListener('guard:confirm', handler)
     }
   },
+  fs: {
+    readDir: (path) => ipcRenderer.invoke('fs:readDir', path),
+    readFile: (path) => ipcRenderer.invoke('fs:readFile', path)
+  },
   win: {
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),
