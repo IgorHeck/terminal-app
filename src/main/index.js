@@ -47,7 +47,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 560,
     backgroundColor: '#0c0c0e',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    frame: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -56,12 +56,28 @@ function createWindow() {
     }
   })
 
+  // sincroniza o estado de maximização com a title bar customizada
+  mainWindow.on('maximize', () => sendToRenderer('window:maximized', true))
+  mainWindow.on('unmaximize', () => sendToRenderer('window:maximized', false))
+
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+// ---------------------------------------------------------------
+// IPC — Controles de janela (title bar customizada, frame:false)
+// ---------------------------------------------------------------
+ipcMain.on('window:minimize', () => mainWindow?.minimize())
+ipcMain.on('window:maximize', () => {
+  if (!mainWindow) return
+  if (mainWindow.isMaximized()) mainWindow.unmaximize()
+  else mainWindow.maximize()
+})
+ipcMain.on('window:close', () => mainWindow?.close())
+ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
 
 // ---------------------------------------------------------------
 // IPC — Projetos

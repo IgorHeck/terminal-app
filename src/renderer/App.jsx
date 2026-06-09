@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import TitleBar from './components/TitleBar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TabBar from './components/TabBar.jsx'
 import Terminal from './components/Terminal.jsx'
@@ -100,7 +101,9 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col h-full">
+      <TitleBar project={activeProject} />
+      <div className="flex flex-1 min-h-0">
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
@@ -137,6 +140,7 @@ export default function App() {
             Crie um projeto para começar
           </div>
         )}
+      </div>
       </div>
 
       {modalProject !== undefined && (

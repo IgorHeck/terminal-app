@@ -28,6 +28,17 @@ const api = {
       ipcRenderer.on('guard:confirm', handler)
       return () => ipcRenderer.removeListener('guard:confirm', handler)
     }
+  },
+  win: {
+    minimize: () => ipcRenderer.send('window:minimize'),
+    maximize: () => ipcRenderer.send('window:maximize'),
+    close: () => ipcRenderer.send('window:close'),
+    isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+    onMaximizeChange: (cb) => {
+      const handler = (_e, val) => cb(val)
+      ipcRenderer.on('window:maximized', handler)
+      return () => ipcRenderer.removeListener('window:maximized', handler)
+    }
   }
 }
 
