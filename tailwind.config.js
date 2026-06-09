@@ -4,11 +4,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#0c0c0e',
-        panel: '#16161a',
-        'panel-2': '#1b1b20',
-        border: '#26262d',
-        accent: '#6366f1'
+        // superfícies
+        bg: 'var(--bg)',
+        'bg-editor': 'var(--bg-editor)',
+        'bg-term': 'var(--bg-term)',
+        panel: 'var(--panel)',
+        'panel-2': 'var(--panel-2)',
+        rail: 'var(--rail)',
+        surface: 'var(--surface)',
+        'surface-hi': 'var(--surface-hi)',
+        border: 'var(--border)',
+        'border-soft': 'var(--border-soft)',
+        // texto
+        text: 'var(--text)',
+        'text-2': 'var(--text-2)',
+        'text-3': 'var(--text-3)',
+        'text-4': 'var(--text-4)',
+        // acento (tweakável) — suporta alpha via <alpha-value>
+        accent: 'rgb(var(--accent-rgb) / <alpha-value>)',
+        // semântica
+        green: 'var(--green)',
+        red: 'var(--red)',
+        yellow: 'var(--yellow)',
+        cyan: 'var(--cyan)',
+        orange: 'var(--orange)',
+        purple: 'var(--purple)'
+      },
+      borderRadius: {
+        token: 'var(--radius)',
+        btn: 'var(--radius-btn)'
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'Cascadia Code', 'monospace'],

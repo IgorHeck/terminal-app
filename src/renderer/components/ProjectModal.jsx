@@ -39,34 +39,34 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       <form
         onMouseDown={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="w-[420px] bg-[#16161a] border border-[#26262d] rounded-xl p-6 shadow-2xl"
+        className="w-[420px] bg-panel border border-border rounded-xl p-6 shadow-2xl"
       >
-        <h2 className="text-base font-semibold text-zinc-100 mb-5">
+        <h2 className="text-base font-semibold text-text mb-5">
           {editing ? 'Editar projeto' : 'Novo projeto'}
         </h2>
 
-        <label className="block text-[12px] text-zinc-400 mb-1.5">Nome</label>
+        <label className="block text-[12px] text-text-2 mb-1.5">Nome</label>
         <input
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="meu-projeto"
-          className="w-full h-9 px-3 mb-4 bg-[#0a0a0c] border border-[#26262d] rounded-lg text-sm text-zinc-100 font-mono focus:border-indigo-500 outline-none"
+          className="w-full h-9 px-3 mb-4 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
         />
 
-        <label className="block text-[12px] text-zinc-400 mb-1.5">Diretório de trabalho</label>
+        <label className="block text-[12px] text-text-2 mb-1.5">Diretório de trabalho</label>
         <input
           value={cwd}
           onChange={(e) => setCwd(e.target.value)}
           placeholder="~/projetos/meu-projeto"
-          className="w-full h-9 px-3 mb-4 bg-[#0a0a0c] border border-[#26262d] rounded-lg text-sm text-zinc-100 font-mono focus:border-indigo-500 outline-none"
+          className="w-full h-9 px-3 mb-4 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
         />
 
-        <label className="block text-[12px] text-zinc-400 mb-1.5">Shell</label>
+        <label className="block text-[12px] text-text-2 mb-1.5">Shell</label>
         <select
           value={shell}
           onChange={(e) => setShell(e.target.value)}
-          className="w-full h-9 px-3 mb-4 bg-[#0a0a0c] border border-[#26262d] rounded-lg text-sm text-zinc-100 font-mono focus:border-indigo-500 outline-none"
+          className="w-full h-9 px-3 mb-4 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
         >
           <option value="">padrão do sistema</option>
           {SHELLS.map((s) => (
@@ -74,14 +74,14 @@ export default function ProjectModal({ project, onSave, onCancel }) {
           ))}
         </select>
 
-        <label className="block text-[12px] text-zinc-400 mb-2">Cor</label>
+        <label className="block text-[12px] text-text-2 mb-2">Cor</label>
         <div className="flex gap-2 mb-6">
           {COLORS.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setColor(c)}
-              className={`w-7 h-7 rounded-full transition-transform ${color === c ? 'ring-2 ring-offset-2 ring-offset-[#16161a] scale-110' : ''}`}
+              className={`w-7 h-7 rounded-full transition-transform ${color === c ? 'ring-2 ring-offset-2 ring-offset-panel scale-110' : ''}`}
               style={{ background: c, '--tw-ring-color': c }}
             />
           ))}
@@ -91,13 +91,13 @@ export default function ProjectModal({ project, onSave, onCancel }) {
           <button
             type="button"
             onClick={onCancel}
-            className="h-9 px-4 rounded-lg text-sm text-zinc-300 hover:bg-[#24242a]"
+            className="h-9 px-4 rounded-lg text-sm text-text-2 hover:bg-surface-hi"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="h-9 px-4 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-500"
+            className="h-9 px-4 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent/90"
           >
             {editing ? 'Salvar' : 'Criar'}
           </button>

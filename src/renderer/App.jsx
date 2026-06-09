@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import TitleBar from './components/TitleBar.jsx'
+import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import StatusBar from './components/StatusBar.jsx'
 import TabBar from './components/TabBar.jsx'
 import Terminal from './components/Terminal.jsx'
 import ProjectModal from './components/ProjectModal.jsx'
@@ -15,6 +18,7 @@ export default function App() {
 
   const [modalProject, setModalProject] = useState(undefined) // undefined=fechado, null=novo, obj=editar
   const [confirm, setConfirm] = useState(null) // { ptyId, command, reason }
+  const [activeView, setActiveView] = useState('projects') // rail de atividades
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
@@ -100,7 +104,10 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-col h-full">
+      <TitleBar project={activeProject} />
+      <div className="flex flex-1 min-h-0">
+      <ActivityRail activeView={activeView} onSelectView={setActiveView} />
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
@@ -121,23 +128,25 @@ export default function App() {
               onClose={(t) => closeTab(activeProjectId, t)}
               onNew={() => newTerminal(activeProject)}
             />
-            <div className="flex-1 relative bg-[#0a0a0c]">
+            <div className="flex-1 relative bg-bg-term">
               {tabs.map((t) => (
                 <Terminal key={t.id} tab={t} active={t.id === activeTabId} />
               ))}
               {tabs.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center text-zinc-600 font-mono text-sm">
+                <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-sm">
                   Nenhum terminal aberto — clique em + para começar
                 </div>
               )}
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-zinc-600 font-mono">
+          <div className="flex-1 flex items-center justify-center text-text-4 font-mono">
             Crie um projeto para começar
           </div>
         )}
       </div>
+      </div>
+      <StatusBar project={activeProject} />
 
       {modalProject !== undefined && (
         <ProjectModal
