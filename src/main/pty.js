@@ -13,9 +13,9 @@ const defaultShell =
 
 /**
  * Cria um novo pseudo-terminal.
- * @param {{ ptyId: string, projectId?: string, shell?: string, cwd?: string, onData: (id, data) => void }}
+ * @param {{ ptyId: string, projectId?: string, shell?: string, cwd?: string, onData: (id, data) => void, onExit?: (id, code) => void }}
  */
-export function createPty({ ptyId, projectId, shell, cwd, onData }) {
+export function createPty({ ptyId, projectId, shell, cwd, onData, onExit }) {
   const resolvedCwd = (cwd || homedir()).replace(/^~/, homedir())
 
   const proc = pty.spawn(shell || defaultShell, [], {
@@ -27,8 +27,9 @@ export function createPty({ ptyId, projectId, shell, cwd, onData }) {
   })
 
   proc.onData((data) => onData(ptyId, data))
-  proc.onExit(() => {
+  proc.onExit(({ exitCode } = {}) => {
     delete ptyProcesses[ptyId]
+    onExit?.(ptyId, exitCode)
   })
 
   ptyProcesses[ptyId] = { proc, projectId }

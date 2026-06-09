@@ -27,11 +27,19 @@ const api = {
       const handler = (_e, payload) => cb(payload)
       ipcRenderer.on('guard:confirm', handler)
       return () => ipcRenderer.removeListener('guard:confirm', handler)
+    },
+    onExit: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('pty:exit', handler)
+      return () => ipcRenderer.removeListener('pty:exit', handler)
     }
   },
   fs: {
     readDir: (path) => ipcRenderer.invoke('fs:readDir', path),
     readFile: (path) => ipcRenderer.invoke('fs:readFile', path)
+  },
+  app: {
+    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
   },
   win: {
     minimize: () => ipcRenderer.send('window:minimize'),
