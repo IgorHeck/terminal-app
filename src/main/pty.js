@@ -3,7 +3,7 @@ import { platform, homedir } from 'os'
 
 const pty = pkg
 
-// mapa ptyId -> { proc, projectId }
+// mapa ptyId -> { proc, projectId, projectName }
 const ptyProcesses = {}
 
 const defaultShell =
@@ -13,9 +13,9 @@ const defaultShell =
 
 /**
  * Cria um novo pseudo-terminal.
- * @param {{ ptyId: string, projectId?: string, shell?: string, cwd?: string, onData: (id, data) => void, onExit?: (id, code) => void }}
+ * @param {{ ptyId: string, projectId?: string, projectName?: string, shell?: string, cwd?: string, onData: (id, data) => void, onExit?: (id, code) => void }}
  */
-export function createPty({ ptyId, projectId, shell, cwd, onData, onExit }) {
+export function createPty({ ptyId, projectId, projectName, shell, cwd, onData, onExit }) {
   const resolvedCwd = (cwd || homedir()).replace(/^~/, homedir())
 
   const proc = pty.spawn(shell || defaultShell, [], {
@@ -32,8 +32,12 @@ export function createPty({ ptyId, projectId, shell, cwd, onData, onExit }) {
     onExit?.(ptyId, exitCode)
   })
 
-  ptyProcesses[ptyId] = { proc, projectId }
+  ptyProcesses[ptyId] = { proc, projectId, projectName: projectName || '' }
   return ptyId
+}
+
+export function getPtyProjectName(ptyId) {
+  return ptyProcesses[ptyId]?.projectName || ''
 }
 
 export function writePty(ptyId, data) {

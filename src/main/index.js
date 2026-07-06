@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync } from 'fs'
 import { readdir, readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
-import { createPty, writePty, resizePty, killPty, killAllForProject } from './pty.js'
+import { createPty, writePty, resizePty, killPty, killAllForProject, getPtyProjectName } from './pty.js'
 import { checkCommand } from './guard.js'
 import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
@@ -151,9 +151,11 @@ ipcMain.handle('projects:remove', (_e, id) => {
 // ---------------------------------------------------------------
 ipcMain.handle('pty:create', (_e, { projectId, shell, cwd } = {}) => {
   const ptyId = `pty_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+  const projectName = getProjects().find((p) => p.id === projectId)?.name || ''
   createPty({
     ptyId,
     projectId,
+    projectName,
     shell,
     cwd,
     onData: (id, data) => sendToRenderer('pty:data', { ptyId: id, data }),
@@ -170,7 +172,7 @@ ipcMain.on('pty:write', (_e, ptyId, data) => {
     lineBuffers[ptyId] = ''
     if (command) {
       const { action, reason } = checkCommand(command)
-      const projectName = '' // o renderer pode informar via outro canal se quiser
+      const projectName = getPtyProjectName(ptyId)
       if (action === 'BLOCK') {
         writeSecurityLog('BLOCK', projectName, ptyId, command)
         sendToRenderer('pty:data', { ptyId, data: `\r\n\x1b[31m✖ comando bloqueado: ${reason}\x1b[0m\r\n` })
