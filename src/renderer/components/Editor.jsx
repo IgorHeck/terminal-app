@@ -13,7 +13,11 @@ export default function Editor({ file, project }) {
     setState({ loading: true, content: '', tooLarge: false, binary: false, error: false })
     window.api.fs
       .readFile(file.path)
-      .then((r) => alive && setState({ loading: false, error: false, ...r }))
+      .then((r) => {
+        if (!alive) return
+        if (r.ok) setState({ loading: false, error: false, ...r.data })
+        else setState({ loading: false, content: '', tooLarge: false, binary: false, error: true })
+      })
       .catch(() => alive && setState({ loading: false, content: '', tooLarge: false, binary: false, error: true }))
     return () => {
       alive = false
