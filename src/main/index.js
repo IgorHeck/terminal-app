@@ -1,11 +1,12 @@
 import { app, BrowserWindow, ipcMain, shell, session } from 'electron'
-import { join, dirname } from 'path'
+import { join, dirname, resolve, relative, isAbsolute } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync } from 'fs'
 import { readdir, readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { createPty, writePty, resizePty, killPty, killAllForProject } from './pty.js'
 import { checkCommand } from './guard.js'
+import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -92,8 +93,27 @@ function expandHome(p) {
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2 MB
 
-ipcMain.handle('fs:readDir', async (_e, dirPath) => {
-  const abs = expandHome(dirPath)
+// caminho pertence ao diretório raiz? (path.relative no win32 já ignora caixa)
+function isInsideRoot(root, abs) {
+  const rel = relative(root, abs)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
+// Resolve o caminho pedido pelo renderer e garante que ele está dentro do
+// cwd de algum projeto cadastrado. O renderer é UI: nenhum caminho fora do
+// escopo dos projetos pode ser lido, mesmo que a chamada venha comprometida.
+function resolveInScope(p) {
+  const abs = resolve(expandHome(p))
+  const inScope = getProjects().some((proj) => isInsideRoot(resolve(expandHome(proj.cwd)), abs))
+  if (!inScope) {
+    writeSecurityLog('DENY', '', 'fs', `caminho fora do escopo dos projetos: ${abs}`)
+    throw new Error('caminho fora do escopo dos projetos')
+  }
+  return abs
+}
+
+safeHandle('fs:readDir', async (_e, dirPath) => {
+  const abs = resolveInScope(dirPath)
   const entries = await readdir(abs, { withFileTypes: true })
   return entries
     .map((d) => ({ name: d.name, path: join(abs, d.name), isDir: d.isDirectory() }))
@@ -106,8 +126,8 @@ ipcMain.handle('shell:openExternal', (_e, url) => {
   return false
 })
 
-ipcMain.handle('fs:readFile', async (_e, filePath) => {
-  const abs = expandHome(filePath)
+safeHandle('fs:readFile', async (_e, filePath) => {
+  const abs = resolveInScope(filePath)
   const st = await stat(abs)
   if (st.size > MAX_FILE_BYTES) return { content: '', tooLarge: true, binary: false }
   const buf = await readFile(abs)

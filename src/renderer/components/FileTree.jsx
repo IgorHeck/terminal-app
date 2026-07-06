@@ -13,12 +13,8 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
   const [expanded, setExpanded] = useState(() => new Set())
 
   const load = useCallback(async (path) => {
-    try {
-      const entries = await window.api.fs.readDir(path)
-      setChildren((prev) => ({ ...prev, [path]: entries }))
-    } catch {
-      setChildren((prev) => ({ ...prev, [path]: [] }))
-    }
+    const res = await window.api.fs.readDir(path)
+    setChildren((prev) => ({ ...prev, [path]: res.ok ? res.data : [] }))
   }, [])
 
   useEffect(() => {
