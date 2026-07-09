@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import TitleBar from './components/TitleBar.jsx'
 import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -17,44 +17,35 @@ import CommandPalette from './components/CommandPalette.jsx'
 import Divider from './components/Divider.jsx'
 import { useTweaks } from './hooks/useTweaks.js'
 import { useResizable } from './hooks/useResizable.js'
+import { TerminalsProvider, useTerminals } from './contexts/TerminalsContext.jsx'
+import { EditorProvider, useEditor } from './contexts/EditorContext.jsx'
+import { RunProvider, useRun } from './contexts/RunContext.jsx'
+import { ProjectsProvider, useProjects } from './contexts/ProjectsContext.jsx'
 
-// aplica um patch num processo Run específico dentro do mapa por projeto
-function patchProc(map, projectId, procId, patch) {
-  return { ...map, [projectId]: (map[projectId] || []).map((p) => (p.id === procId ? { ...p, ...patch } : p)) }
-}
+function AppLayout() {
+  const {
+    projects, activeProjectId, activeProject, modalProject, confirm,
+    dispatch: dispatchProjects, saveProject, deleteProject, confirmRun,
+  } = useProjects()
+  const {
+    tabsByProject, activeTabByProject,
+    dispatch: dispatchTerminals, newTerminal, closeTab, splitTerminal, closePane, selectTab,
+  } = useTerminals()
+  const { openFilesByProject, activeFileByProject, openFile, selectFile, closeFile } = useEditor()
+  const {
+    runProcessesByProject, runModalOpen,
+    dispatch: dispatchRun, addRunProcess, startRunProcess, stopRunProcess, removeRunProcess, openRunPort,
+  } = useRun()
 
-export default function App() {
-  const [projects, setProjects] = useState([])
-  const [activeProjectId, setActiveProjectId] = useState(null)
-
-  // abas (terminais) por projeto: { [projectId]: Tab[] }
-  const [tabsByProject, setTabsByProject] = useState({})
-  const [activeTabByProject, setActiveTabByProject] = useState({})
-
-  // arquivos abertos no editor por projeto: { [projectId]: { path, name }[] }
-  const [openFilesByProject, setOpenFilesByProject] = useState({})
-  const [activeFileByProject, setActiveFileByProject] = useState({})
-
-  // processos do painel Run por projeto: { [projectId]: RunProc[] }
-  const [runProcessesByProject, setRunProcessesByProject] = useState({})
-  const [runModalOpen, setRunModalOpen] = useState(false)
-
-  const [modalProject, setModalProject] = useState(undefined) // undefined=fechado, null=novo, obj=editar
-  const [confirm, setConfirm] = useState(null) // { ptyId, command, reason }
-  const [activeView, setActiveView] = useState('projects') // rail de atividades
+  const [activeView, setActiveView] = useState('projects')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [tweaks, setTweak] = useTweaks()
-  // largura da sidebar (DESIGN §9: limites 180–360px)
   const [sidebarWidth, onSidebarResize] = useResizable({ axis: 'x', initial: 220, min: 180, max: 360 })
-  // altura do terminal integrado (DESIGN §9: mínimo 120px; cresce arrastando ↕ para cima)
   const [termHeight, onTermResize] = useResizable({ axis: 'y', initial: 300, min: 120, max: 900, invert: true })
-  // largura do explorador (DESIGN §9: limites 180–420px)
   const [explorerWidth, onExplorerResize] = useResizable({ axis: 'x', initial: 244, min: 180, max: 420 })
-  // largura do painel Run (DESIGN §9: 280–640px; ancorado à direita → invert)
   const [runWidth, onRunResize] = useResizable({ axis: 'x', initial: 386, min: 280, max: 640, invert: true })
 
-  const activeProject = projects.find((p) => p.id === activeProjectId) || null
   const tabs = tabsByProject[activeProjectId] || []
   const activeTabId = activeTabByProject[activeProjectId] || null
   const openFiles = openFilesByProject[activeProjectId] || []
@@ -62,21 +53,6 @@ export default function App() {
   const activeFile = openFiles.find((f) => f.path === activeFilePath) || null
   const runProcesses = runProcessesByProject[activeProjectId] || []
 
-  // ---- carregar projetos persistidos ----
-  useEffect(() => {
-    window.api.projects.list().then((list) => {
-      setProjects(list)
-      if (list.length && !activeProjectId) setActiveProjectId(list[0].id)
-    })
-  }, [])
-
-  // ---- assinar pedidos de confirmação do guard ----
-  useEffect(() => {
-    const off = window.api.pty.onConfirm((payload) => setConfirm(payload))
-    return off
-  }, [])
-
-  // ---- atalho global Ctrl/Cmd+K para a paleta de comandos ----
   useEffect(() => {
     const onKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -88,200 +64,41 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // ---- ao sair, marcar o processo Run correspondente como parado ----
-  useEffect(() => {
-    const off = window.api.pty.onExit(({ ptyId }) => {
-      setRunProcessesByProject((prev) => {
-        let changed = false
-        const next = {}
-        for (const [pid, list] of Object.entries(prev)) {
-          next[pid] = list.map((p) => {
-            if (p.ptyId === ptyId && p.status === 'running') {
-              changed = true
-              return { ...p, status: 'stopped' }
-            }
-            return p
-          })
-        }
-        return changed ? next : prev
-      })
-    })
-    return off
-  }, [])
+  const handleSelectTab = useCallback((project, tab) => {
+    dispatchProjects({ type: 'SET_ACTIVE', id: project.id })
+    selectTab(project, tab)
+  }, [dispatchProjects, selectTab])
 
-  // ---- criar nova aba/terminal ----
-  const newTerminal = useCallback(
-    async (project, kind = 'shell', profile = null) => {
-      const ptyId = await window.api.pty.create({
-        projectId: project.id,
-        shell: profile?.shell || project.shell,
-        cwd: project.cwd
-      })
-      const id = `tab_${Date.now()}`
-      const count = (tabsByProject[project.id] || []).length + 1
-      const tab = {
-        id,
-        panes: [ptyId],
-        name: profile?.name || (kind === 'run' ? `run ${count}` : `shell ${count}`),
-        kind,
-        status: 'idle'
-      }
-      setTabsByProject((prev) => ({
-        ...prev,
-        [project.id]: [...(prev[project.id] || []), tab]
-      }))
-      setActiveTabByProject((prev) => ({ ...prev, [project.id]: id }))
-    },
-    [tabsByProject]
-  )
-
-  const closeTab = useCallback((projectId, tab) => {
-    ;(tab.panes || []).forEach((ptyId) => window.api.pty.kill(ptyId))
-    setTabsByProject((prev) => {
-      const next = (prev[projectId] || []).filter((t) => t.id !== tab.id)
-      return { ...prev, [projectId]: next }
-    })
-  }, [])
-
-  // ---- split: adicionar um pane (novo PTY) à aba ----
-  const splitTerminal = useCallback(async (project, tab) => {
-    const ptyId = await window.api.pty.create({ projectId: project.id, shell: project.shell, cwd: project.cwd })
-    setTabsByProject((prev) => ({
-      ...prev,
-      [project.id]: (prev[project.id] || []).map((t) => (t.id === tab.id ? { ...t, panes: [...t.panes, ptyId] } : t))
-    }))
-  }, [])
-
-  const closePane = useCallback((projectId, tabId, ptyId) => {
-    window.api.pty.kill(ptyId)
-    setTabsByProject((prev) => ({
-      ...prev,
-      [projectId]: (prev[projectId] || []).map((t) =>
-        t.id === tabId ? { ...t, panes: t.panes.filter((p) => p !== ptyId) } : t
-      )
-    }))
-  }, [])
-
-  // ---- CRUD de projetos ----
-  const saveProject = useCallback(
-    async (data) => {
-      if (data.id) {
-        const updated = await window.api.projects.update(data.id, data)
-        setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
-      } else {
-        const created = await window.api.projects.add(data)
-        setProjects((prev) => [...prev, created])
-        setActiveProjectId(created.id)
-      }
-      setModalProject(undefined)
-    },
-    []
-  )
-
-  // ---- abrir/fechar arquivos no editor ----
-  const openFile = useCallback((entry) => {
-    if (!entry || entry.isDir) return
-    const pid = activeProjectId
-    setOpenFilesByProject((prev) => {
-      const list = prev[pid] || []
-      if (list.some((f) => f.path === entry.path)) return prev
-      return { ...prev, [pid]: [...list, { path: entry.path, name: entry.name }] }
-    })
-    setActiveFileByProject((prev) => ({ ...prev, [pid]: entry.path }))
-  }, [activeProjectId])
-
-  const selectFile = useCallback((file) => {
-    setActiveFileByProject((prev) => ({ ...prev, [activeProjectId]: file.path }))
-  }, [activeProjectId])
-
-  const closeFile = useCallback((file) => {
-    const pid = activeProjectId
-    const remaining = (openFilesByProject[pid] || []).filter((f) => f.path !== file.path)
-    setOpenFilesByProject((prev) => ({ ...prev, [pid]: remaining }))
-    setActiveFileByProject((cur) => {
-      if (cur[pid] !== file.path) return cur
-      const next = remaining[remaining.length - 1]
-      return { ...cur, [pid]: next ? next.path : null }
-    })
-  }, [activeProjectId, openFilesByProject])
-
-  // ---- processos do painel Run ----
-  const addRunProcess = useCallback((data) => {
-    const pid = activeProjectId
-    const proc = { id: `run_${Date.now()}`, name: data.name, command: data.command, port: data.port, ptyId: null, status: 'idle' }
-    setRunProcessesByProject((prev) => ({ ...prev, [pid]: [...(prev[pid] || []), proc] }))
-    setRunModalOpen(false)
-  }, [activeProjectId])
-
-  const startRunProcess = useCallback(async (proc) => {
-    const project = activeProject
-    if (!project) return
-    const ptyId = await window.api.pty.create({ projectId: project.id, shell: project.shell, cwd: project.cwd })
-    window.api.pty.write(ptyId, proc.command + '\r')
-    setRunProcessesByProject((prev) => patchProc(prev, project.id, proc.id, { ptyId, status: 'running' }))
-  }, [activeProject])
-
-  const stopRunProcess = useCallback((proc) => {
-    if (proc.ptyId) window.api.pty.kill(proc.ptyId)
-    setRunProcessesByProject((prev) => patchProc(prev, activeProjectId, proc.id, { status: 'stopped' }))
-  }, [activeProjectId])
-
-  const removeRunProcess = useCallback((proc) => {
-    if (proc.ptyId && proc.status === 'running') window.api.pty.kill(proc.ptyId)
-    setRunProcessesByProject((prev) => ({
-      ...prev,
-      [activeProjectId]: (prev[activeProjectId] || []).filter((p) => p.id !== proc.id)
-    }))
-  }, [activeProjectId])
-
-  const openRunPort = useCallback((proc) => {
-    if (proc.port) window.api.app.openExternal(`http://localhost:${proc.port}`)
-  }, [])
-
-  // ---- selecionar um terminal a partir da sidebar (accordion) ----
-  const selectTab = useCallback((project, tab) => {
-    setActiveProjectId(project.id)
-    setActiveTabByProject((prev) => ({ ...prev, [project.id]: tab.id }))
-  }, [])
-
-  const deleteProject = useCallback(async (project) => {
-    await window.api.projects.remove(project.id)
-    setProjects((prev) => prev.filter((p) => p.id !== project.id))
-    setTabsByProject((prev) => {
-      const { [project.id]: _, ...rest } = prev
-      return rest
-    })
-    setRunProcessesByProject((prev) => {
-      const { [project.id]: _, ...rest } = prev
-      return rest
-    })
-  }, [])
-
-  // ---- confirmação de comando sensível ----
-  const onConfirmRun = () => {
-    if (confirm) window.api.pty.confirmRun(confirm.ptyId, confirm.command)
-    setConfirm(null)
-  }
-
-  // ---- itens da paleta de comandos (projetos, terminais, arquivos, Run) ----
   const paletteItems = useMemo(() => {
     const items = []
     for (const p of projects) {
-      items.push({ id: `p:${p.id}`, group: 'projeto', label: p.name, color: p.color, run: () => setActiveProjectId(p.id) })
+      items.push({
+        id: `p:${p.id}`, group: 'projeto', label: p.name, color: p.color,
+        run: () => dispatchProjects({ type: 'SET_ACTIVE', id: p.id }),
+      })
       for (const tab of tabsByProject[p.id] || []) {
         items.push({
           id: `t:${tab.id}`, group: 'terminal', label: tab.name, sub: p.name, color: p.color,
-          run: () => { setActiveProjectId(p.id); setActiveTabByProject((prev) => ({ ...prev, [p.id]: tab.id })) }
+          run: () => {
+            dispatchProjects({ type: 'SET_ACTIVE', id: p.id })
+            dispatchTerminals({ type: 'TAB_ACTIVE', projectId: p.id, tabId: tab.id })
+          },
         })
       }
       for (const f of openFilesByProject[p.id] || []) {
         items.push({
           id: `f:${p.id}:${f.path}`, group: 'arquivo', label: f.name, sub: f.path, color: p.color,
-          run: () => { setActiveProjectId(p.id); setActiveFileByProject((prev) => ({ ...prev, [p.id]: f.path })) }
+          run: () => {
+            dispatchProjects({ type: 'SET_ACTIVE', id: p.id })
+            selectFile(p.id, { path: f.path })
+          },
         })
       }
       for (const proc of runProcessesByProject[p.id] || []) {
-        items.push({ id: `r:${proc.id}`, group: 'run', label: proc.name, sub: p.name, color: p.color, run: () => setActiveProjectId(p.id) })
+        items.push({
+          id: `r:${proc.id}`, group: 'run', label: proc.name, sub: p.name, color: p.color,
+          run: () => dispatchProjects({ type: 'SET_ACTIVE', id: p.id }),
+        })
       }
     }
     return items
@@ -296,120 +113,116 @@ export default function App() {
     <div className="flex flex-col h-full">
       <TitleBar project={activeProject} onOpenSearch={() => setPaletteOpen(true)} />
       <div className="flex flex-1 min-h-0">
-      {tweaks.showRail && (
-        <ActivityRail
-          activeView={activeView}
-          onSelectView={setActiveView}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
-      )}
-      <Sidebar
-        projects={projects}
-        activeProjectId={activeProjectId}
-        activeTabByProject={activeTabByProject}
-        tabsByProject={tabsByProject}
-        onSelect={(p) => setActiveProjectId(p.id)}
-        onAdd={() => setModalProject(null)}
-        onEdit={(p) => setModalProject(p)}
-        onDelete={deleteProject}
-        onSelectTab={selectTab}
-        onCloseTab={(p, t) => closeTab(p.id, t)}
-        onNewTerminal={(p) => newTerminal(p)}
-        width={sidebarWidth}
-      />
-      <Divider axis="x" onPointerDown={onSidebarResize} />
-
-      {activeProject && (
-        <>
-          <FileTree
-            root={activeProject.cwd}
-            activeFile={activeFilePath}
-            onOpenFile={openFile}
-            width={explorerWidth}
+        {tweaks.showRail && (
+          <ActivityRail
+            activeView={activeView}
+            onSelectView={setActiveView}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
-          <Divider axis="x" onPointerDown={onExplorerResize} />
-        </>
-      )}
-
-      <div className="flex-1 flex flex-col min-w-0">
-        {activeProject ? (
-          <>
-            {/* Abas do editor + editor de código */}
-            <div className="flex-1 min-h-0 flex flex-col">
-              <EditorTabs
-                files={openFiles}
-                activeFile={activeFilePath}
-                project={activeProject}
-                onSelect={selectFile}
-                onClose={closeFile}
-              />
-              <Editor file={activeFile} project={activeProject} />
-            </div>
-
-            {/* Divisória ↕ entre editor e terminal */}
-            <Divider axis="y" onPointerDown={onTermResize} />
-
-            {/* Terminal integrado */}
-            <div style={{ height: termHeight }} className="flex flex-col flex-shrink-0 min-h-0">
-              <TabBar
-                tabs={tabs}
-                activeTabId={activeTabId}
-                project={activeProject}
-                onSelect={(t) => setActiveTabByProject((prev) => ({ ...prev, [activeProjectId]: t.id }))}
-                onClose={(t) => closeTab(activeProjectId, t)}
-                onNew={(profile) => newTerminal(activeProject, 'shell', profile)}
-                onSplit={() => {
-                  const t = tabs.find((x) => x.id === activeTabId)
-                  if (t) splitTerminal(activeProject, t)
-                }}
-              />
-              <div className="flex-1 relative bg-bg-term min-h-0">
-                {tabs.map((t) => (
-                  <TerminalPanes
-                    key={t.id}
-                    tab={t}
-                    active={t.id === activeTabId}
-                    accentKey={tweaks.accent}
-                    onClosePane={(ptyId) => closePane(activeProjectId, t.id, ptyId)}
-                  />
-                ))}
-                {tabs.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-sm">
-                    Nenhum terminal aberto — clique em + para começar
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-text-4 font-mono">
-            Crie um projeto para começar
-          </div>
         )}
-      </div>
+        <Sidebar
+          projects={projects}
+          activeProjectId={activeProjectId}
+          activeTabByProject={activeTabByProject}
+          tabsByProject={tabsByProject}
+          onSelect={(p) => dispatchProjects({ type: 'SET_ACTIVE', id: p.id })}
+          onAdd={() => dispatchProjects({ type: 'OPEN_MODAL', project: null })}
+          onEdit={(p) => dispatchProjects({ type: 'OPEN_MODAL', project: p })}
+          onDelete={deleteProject}
+          onSelectTab={handleSelectTab}
+          onCloseTab={(p, t) => closeTab(p.id, t)}
+          onNewTerminal={(p) => newTerminal(p)}
+          width={sidebarWidth}
+        />
+        <Divider axis="x" onPointerDown={onSidebarResize} />
 
-      {activeProject && (
-        <>
-          <Divider axis="x" onPointerDown={onRunResize} />
-          <RunPanel
-            processes={runProcesses}
-            project={activeProject}
-            width={runWidth}
-            layout={tweaks.runLayout}
-            accentKey={tweaks.accent}
-            onSetLayout={(l) => setTweak({ runLayout: l })}
-            onNew={() => setRunModalOpen(true)}
-            onStart={startRunProcess}
-            onStop={stopRunProcess}
-            onRemove={removeRunProcess}
-            onOpenPort={openRunPort}
-          />
-        </>
-      )}
+        {activeProject && (
+          <>
+            <FileTree
+              root={activeProject.cwd}
+              activeFile={activeFilePath}
+              onOpenFile={(entry) => openFile(activeProjectId, entry)}
+              width={explorerWidth}
+            />
+            <Divider axis="x" onPointerDown={onExplorerResize} />
+          </>
+        )}
+
+        <div className="flex-1 flex flex-col min-w-0">
+          {activeProject ? (
+            <>
+              <div className="flex-1 min-h-0 flex flex-col">
+                <EditorTabs
+                  files={openFiles}
+                  activeFile={activeFilePath}
+                  project={activeProject}
+                  onSelect={(f) => selectFile(activeProjectId, f)}
+                  onClose={(f) => closeFile(activeProjectId, f)}
+                />
+                <Editor file={activeFile} project={activeProject} />
+              </div>
+
+              <Divider axis="y" onPointerDown={onTermResize} />
+
+              <div style={{ height: termHeight }} className="flex flex-col flex-shrink-0 min-h-0">
+                <TabBar
+                  tabs={tabs}
+                  activeTabId={activeTabId}
+                  project={activeProject}
+                  onSelect={(t) => dispatchTerminals({ type: 'TAB_ACTIVE', projectId: activeProjectId, tabId: t.id })}
+                  onClose={(t) => closeTab(activeProjectId, t)}
+                  onNew={(profile) => newTerminal(activeProject, 'shell', profile)}
+                  onSplit={() => {
+                    const t = tabs.find((x) => x.id === activeTabId)
+                    if (t) splitTerminal(activeProject, t)
+                  }}
+                />
+                <div className="flex-1 relative bg-bg-term min-h-0">
+                  {tabs.map((t) => (
+                    <TerminalPanes
+                      key={t.id}
+                      tab={t}
+                      active={t.id === activeTabId}
+                      accentKey={tweaks.accent}
+                      onClosePane={(ptyId) => closePane(activeProjectId, t.id, ptyId)}
+                    />
+                  ))}
+                  {tabs.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center text-text-4 font-mono text-sm">
+                      Nenhum terminal aberto — clique em + para começar
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-text-4 font-mono">
+              Crie um projeto para começar
+            </div>
+          )}
+        </div>
+
+        {activeProject && (
+          <>
+            <Divider axis="x" onPointerDown={onRunResize} />
+            <RunPanel
+              processes={runProcesses}
+              project={activeProject}
+              width={runWidth}
+              layout={tweaks.runLayout}
+              accentKey={tweaks.accent}
+              onSetLayout={(l) => setTweak({ runLayout: l })}
+              onNew={() => dispatchRun({ type: 'SET_MODAL', open: true })}
+              onStart={(proc) => startRunProcess(activeProject, proc)}
+              onStop={(proc) => stopRunProcess(activeProjectId, proc)}
+              onRemove={(proc) => removeRunProcess(activeProjectId, proc)}
+              onOpenPort={openRunPort}
+            />
+          </>
+        )}
       </div>
       <StatusBar project={activeProject} />
 
-      {/* fallback para reabrir ajustes quando o rail está oculto */}
       {!tweaks.showRail && (
         <button
           type="button"
@@ -422,11 +235,7 @@ export default function App() {
       )}
 
       {settingsOpen && (
-        <SettingsPanel
-          tweaks={tweaks}
-          onChange={setTweak}
-          onClose={() => setSettingsOpen(false)}
-        />
+        <SettingsPanel tweaks={tweaks} onChange={setTweak} onClose={() => setSettingsOpen(false)} />
       )}
 
       {paletteOpen && (
@@ -434,24 +243,42 @@ export default function App() {
       )}
 
       {runModalOpen && (
-        <RunProcessModal onSave={addRunProcess} onCancel={() => setRunModalOpen(false)} />
+        <RunProcessModal
+          onSave={(data) => addRunProcess(activeProjectId, data)}
+          onCancel={() => dispatchRun({ type: 'SET_MODAL', open: false })}
+        />
       )}
 
       {modalProject !== undefined && (
         <ProjectModal
           project={modalProject}
           onSave={saveProject}
-          onCancel={() => setModalProject(undefined)}
+          onCancel={() => dispatchProjects({ type: 'CLOSE_MODAL' })}
         />
       )}
+
       {confirm && (
         <ConfirmModal
           command={confirm.command}
           reason={confirm.reason}
-          onConfirm={onConfirmRun}
-          onCancel={() => setConfirm(null)}
+          onConfirm={confirmRun}
+          onCancel={() => dispatchProjects({ type: 'SET_CONFIRM', payload: null })}
         />
       )}
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <TerminalsProvider>
+      <EditorProvider>
+        <RunProvider>
+          <ProjectsProvider>
+            <AppLayout />
+          </ProjectsProvider>
+        </RunProvider>
+      </EditorProvider>
+    </TerminalsProvider>
   )
 }
