@@ -19,12 +19,18 @@ export default function EditorTabs({ files, activeFile, project, onSelect, onClo
             }`}
             style={isActive ? { boxShadow: `inset 0 2px 0 ${project?.color}` } : {}}
           >
-            <span className="text-[8px] font-bold leading-none flex-shrink-0" style={{ color: b.c }}>
+            <span
+              className="text-[8px] font-bold leading-none flex-shrink-0"
+              style={{ color: b.c }}
+            >
               {b.l}
             </span>
             <span className="text-[12px] font-mono whitespace-nowrap">{f.name}</span>
             <button
-              onClick={(e) => { e.stopPropagation(); onClose(f) }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose(f)
+              }}
               title="Fechar"
               className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi opacity-0 group-hover:opacity-100 text-xs"
             >

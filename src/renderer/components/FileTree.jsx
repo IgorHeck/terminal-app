@@ -3,8 +3,14 @@ import FileBadge from './FileBadge.jsx'
 
 // Itens esmaecidos (DESIGN.md §7): dependências, builds e lockfiles.
 const DIM = new Set([
-  'node_modules', 'out', 'dist', 'build', '.git',
-  'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'
+  'node_modules',
+  'out',
+  'dist',
+  'build',
+  '.git',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
 ])
 
 // Explorador de arquivos (~244px) — DESIGN.md §6 (4), §7.
@@ -49,7 +55,11 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
             style={{ paddingLeft: pad, height: 'var(--tree-h)', opacity: dim ? 0.42 : 1 }}
             className="flex items-center gap-1.5 pr-2 cursor-pointer text-[12px] font-mono text-text-2 hover:bg-surface hover:text-text rounded-btn"
           >
-            <span className={`text-[10px] text-text-3 transition-transform ${open ? 'rotate-90' : ''}`}>▸</span>
+            <span
+              className={`text-[10px] text-text-3 transition-transform ${open ? 'rotate-90' : ''}`}
+            >
+              ▸
+            </span>
             <span>{open ? '📂' : '📁'}</span>
             <span className="truncate">{entry.name}</span>
           </div>
@@ -68,7 +78,9 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
           isActive ? 'bg-accent/15 text-text' : 'text-text-2 hover:bg-surface hover:text-text'
         }`}
       >
-        {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-3/5 rounded bg-accent" />}
+        {isActive && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-3/5 rounded bg-accent" />
+        )}
         <FileBadge name={entry.name} />
         <span className="truncate">{entry.name}</span>
       </div>
@@ -76,18 +88,27 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
   }
 
   return (
-    <div style={{ width }} className="flex-shrink-0 bg-panel border-r border-border-soft flex flex-col h-full">
+    <div
+      style={{ width }}
+      className="flex-shrink-0 bg-panel border-r border-border-soft flex flex-col h-full"
+    >
       <div className="h-11 flex items-center px-3 border-b border-border-soft">
-        <span className="text-[11px] font-semibold text-text-3 uppercase tracking-wider">Explorador</span>
+        <span className="text-[11px] font-semibold text-text-3 uppercase tracking-wider">
+          Explorador
+        </span>
       </div>
       <div className="flex-1 overflow-auto py-1.5 px-1.5">
-        {!root && <div className="text-[12px] text-text-4 font-mono italic px-2 py-3">sem diretório</div>}
+        {!root && (
+          <div className="text-[12px] text-text-4 font-mono italic px-2 py-3">sem diretório</div>
+        )}
         {root && !childrenByPath[root] && (
           <div className="text-[12px] text-text-4 font-mono italic px-2 py-3">carregando…</div>
         )}
         {root && (childrenByPath[root] || []).map((c) => renderNode(c, 0))}
         {root && childrenByPath[root] && childrenByPath[root].length === 0 && (
-          <div className="text-[12px] text-text-4 font-mono italic px-2 py-3">diretório vazio ou inacessível</div>
+          <div className="text-[12px] text-text-4 font-mono italic px-2 py-3">
+            diretório vazio ou inacessível
+          </div>
         )}
       </div>
     </div>

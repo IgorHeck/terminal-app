@@ -10,9 +10,16 @@ function reducer(state, action) {
     case 'LOADED':
       return { ...state, projects: action.projects }
     case 'ADDED':
-      return { ...state, projects: [...state.projects, action.project], activeProjectId: action.project.id }
+      return {
+        ...state,
+        projects: [...state.projects, action.project],
+        activeProjectId: action.project.id,
+      }
     case 'UPDATED':
-      return { ...state, projects: state.projects.map((p) => (p.id === action.project.id ? action.project : p)) }
+      return {
+        ...state,
+        projects: state.projects.map((p) => (p.id === action.project.id ? action.project : p)),
+      }
     case 'REMOVED':
       return { ...state, projects: state.projects.filter((p) => p.id !== action.id) }
     case 'SET_ACTIVE':
@@ -63,13 +70,16 @@ export function ProjectsProvider({ children }) {
     dispatch({ type: 'CLOSE_MODAL' })
   }, [])
 
-  const deleteProject = useCallback(async (project) => {
-    await window.api.projects.remove(project.id)
-    dispatch({ type: 'REMOVED', id: project.id })
-    dispatchTerminals({ type: 'PROJECT_REMOVED', projectId: project.id })
-    dispatchEditor({ type: 'PROJECT_REMOVED', projectId: project.id })
-    dispatchRun({ type: 'PROJECT_REMOVED', projectId: project.id })
-  }, [dispatchTerminals, dispatchEditor, dispatchRun])
+  const deleteProject = useCallback(
+    async (project) => {
+      await window.api.projects.remove(project.id)
+      dispatch({ type: 'REMOVED', id: project.id })
+      dispatchTerminals({ type: 'PROJECT_REMOVED', projectId: project.id })
+      dispatchEditor({ type: 'PROJECT_REMOVED', projectId: project.id })
+      dispatchRun({ type: 'PROJECT_REMOVED', projectId: project.id })
+    },
+    [dispatchTerminals, dispatchEditor, dispatchRun]
+  )
 
   const confirmRun = useCallback(() => {
     if (state.confirm) window.api.pty.confirmRun(state.confirm.ptyId, state.confirm.command)
@@ -79,7 +89,9 @@ export function ProjectsProvider({ children }) {
   const activeProject = state.projects.find((p) => p.id === state.activeProjectId) || null
 
   return (
-    <ProjectsContext.Provider value={{ ...state, activeProject, dispatch, saveProject, deleteProject, confirmRun }}>
+    <ProjectsContext.Provider
+      value={{ ...state, activeProject, dispatch, saveProject, deleteProject, confirmRun }}
+    >
       {children}
     </ProjectsContext.Provider>
   )

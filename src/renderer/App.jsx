@@ -24,27 +24,68 @@ import { ProjectsProvider, useProjects } from './contexts/ProjectsContext.jsx'
 
 function AppLayout() {
   const {
-    projects, activeProjectId, activeProject, modalProject, confirm,
-    dispatch: dispatchProjects, saveProject, deleteProject, confirmRun,
+    projects,
+    activeProjectId,
+    activeProject,
+    modalProject,
+    confirm,
+    dispatch: dispatchProjects,
+    saveProject,
+    deleteProject,
+    confirmRun,
   } = useProjects()
   const {
-    tabsByProject, activeTabByProject,
-    dispatch: dispatchTerminals, newTerminal, closeTab, splitTerminal, closePane, selectTab,
+    tabsByProject,
+    activeTabByProject,
+    dispatch: dispatchTerminals,
+    newTerminal,
+    closeTab,
+    splitTerminal,
+    closePane,
+    selectTab,
   } = useTerminals()
   const { openFilesByProject, activeFileByProject, openFile, selectFile, closeFile } = useEditor()
   const {
-    runProcessesByProject, runModalOpen,
-    dispatch: dispatchRun, addRunProcess, startRunProcess, stopRunProcess, removeRunProcess, openRunPort,
+    runProcessesByProject,
+    runModalOpen,
+    dispatch: dispatchRun,
+    addRunProcess,
+    startRunProcess,
+    stopRunProcess,
+    removeRunProcess,
+    openRunPort,
   } = useRun()
 
   const [activeView, setActiveView] = useState('projects')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [tweaks, setTweak] = useTweaks()
-  const [sidebarWidth, onSidebarResize] = useResizable({ axis: 'x', initial: 220, min: 180, max: 360 })
-  const [termHeight, onTermResize] = useResizable({ axis: 'y', initial: 300, min: 120, max: 900, invert: true })
-  const [explorerWidth, onExplorerResize] = useResizable({ axis: 'x', initial: 244, min: 180, max: 420 })
-  const [runWidth, onRunResize] = useResizable({ axis: 'x', initial: 386, min: 280, max: 640, invert: true })
+  const [sidebarWidth, onSidebarResize] = useResizable({
+    axis: 'x',
+    initial: 220,
+    min: 180,
+    max: 360,
+  })
+  const [termHeight, onTermResize] = useResizable({
+    axis: 'y',
+    initial: 300,
+    min: 120,
+    max: 900,
+    invert: true,
+  })
+  const [explorerWidth, onExplorerResize] = useResizable({
+    axis: 'x',
+    initial: 244,
+    min: 180,
+    max: 420,
+  })
+  const [runWidth, onRunResize] = useResizable({
+    axis: 'x',
+    initial: 386,
+    min: 280,
+    max: 640,
+    invert: true,
+  })
 
   const tabs = tabsByProject[activeProjectId] || []
   const activeTabId = activeTabByProject[activeProjectId] || null
@@ -64,21 +105,31 @@ function AppLayout() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const handleSelectTab = useCallback((project, tab) => {
-    dispatchProjects({ type: 'SET_ACTIVE', id: project.id })
-    selectTab(project, tab)
-  }, [dispatchProjects, selectTab])
+  const handleSelectTab = useCallback(
+    (project, tab) => {
+      dispatchProjects({ type: 'SET_ACTIVE', id: project.id })
+      selectTab(project, tab)
+    },
+    [dispatchProjects, selectTab]
+  )
 
   const paletteItems = useMemo(() => {
     const items = []
     for (const p of projects) {
       items.push({
-        id: `p:${p.id}`, group: 'projeto', label: p.name, color: p.color,
+        id: `p:${p.id}`,
+        group: 'projeto',
+        label: p.name,
+        color: p.color,
         run: () => dispatchProjects({ type: 'SET_ACTIVE', id: p.id }),
       })
       for (const tab of tabsByProject[p.id] || []) {
         items.push({
-          id: `t:${tab.id}`, group: 'terminal', label: tab.name, sub: p.name, color: p.color,
+          id: `t:${tab.id}`,
+          group: 'terminal',
+          label: tab.name,
+          sub: p.name,
+          color: p.color,
           run: () => {
             dispatchProjects({ type: 'SET_ACTIVE', id: p.id })
             dispatchTerminals({ type: 'TAB_ACTIVE', projectId: p.id, tabId: tab.id })
@@ -87,7 +138,11 @@ function AppLayout() {
       }
       for (const f of openFilesByProject[p.id] || []) {
         items.push({
-          id: `f:${p.id}:${f.path}`, group: 'arquivo', label: f.name, sub: f.path, color: p.color,
+          id: `f:${p.id}:${f.path}`,
+          group: 'arquivo',
+          label: f.name,
+          sub: f.path,
+          color: p.color,
           run: () => {
             dispatchProjects({ type: 'SET_ACTIVE', id: p.id })
             selectFile(p.id, { path: f.path })
@@ -96,13 +151,25 @@ function AppLayout() {
       }
       for (const proc of runProcessesByProject[p.id] || []) {
         items.push({
-          id: `r:${proc.id}`, group: 'run', label: proc.name, sub: p.name, color: p.color,
+          id: `r:${proc.id}`,
+          group: 'run',
+          label: proc.name,
+          sub: p.name,
+          color: p.color,
           run: () => dispatchProjects({ type: 'SET_ACTIVE', id: p.id }),
         })
       }
     }
     return items
-  }, [projects, tabsByProject, openFilesByProject, runProcessesByProject])
+  }, [
+    projects,
+    tabsByProject,
+    openFilesByProject,
+    runProcessesByProject,
+    dispatchProjects,
+    dispatchTerminals,
+    selectFile,
+  ])
 
   const onPaletteSelect = useCallback((item) => {
     item.run?.()
@@ -169,7 +236,13 @@ function AppLayout() {
                   tabs={tabs}
                   activeTabId={activeTabId}
                   project={activeProject}
-                  onSelect={(t) => dispatchTerminals({ type: 'TAB_ACTIVE', projectId: activeProjectId, tabId: t.id })}
+                  onSelect={(t) =>
+                    dispatchTerminals({
+                      type: 'TAB_ACTIVE',
+                      projectId: activeProjectId,
+                      tabId: t.id,
+                    })
+                  }
                   onClose={(t) => closeTab(activeProjectId, t)}
                   onNew={(profile) => newTerminal(activeProject, 'shell', profile)}
                   onSplit={() => {
@@ -239,7 +312,11 @@ function AppLayout() {
       )}
 
       {paletteOpen && (
-        <CommandPalette items={paletteItems} onClose={() => setPaletteOpen(false)} onSelect={onPaletteSelect} />
+        <CommandPalette
+          items={paletteItems}
+          onClose={() => setPaletteOpen(false)}
+          onSelect={onPaletteSelect}
+        />
       )}
 
       {runModalOpen && (

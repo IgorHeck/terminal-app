@@ -21,7 +21,7 @@ function TerminalRow({ project, tab, active, onSelect, onClose }) {
         className="w-2 h-2 rounded-full flex-shrink-0"
         style={{
           background: statusColor(tab.status, project.color),
-          boxShadow: tab.status === 'running' ? '0 0 6px var(--green)' : 'none'
+          boxShadow: tab.status === 'running' ? '0 0 6px var(--green)' : 'none',
         }}
       />
       <span className="truncate flex-1">{tab.name}</span>
@@ -31,7 +31,10 @@ function TerminalRow({ project, tab, active, onSelect, onClose }) {
         </span>
       )}
       <button
-        onClick={(e) => { e.stopPropagation(); onClose(project, tab) }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onClose(project, tab)
+        }}
         title="Fechar terminal"
         className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi opacity-0 group-hover/term:opacity-100 text-xs"
       >
@@ -53,7 +56,7 @@ export default function Sidebar({
   onSelectTab,
   onCloseTab,
   onNewTerminal,
-  width = 220
+  width = 220,
 }) {
   const [hovered, setHovered] = useState(null)
   const [expanded, setExpanded] = useState(() => new Set())
@@ -104,7 +107,9 @@ export default function Sidebar({
                 onMouseLeave={() => setHovered(null)}
                 style={{ height: 'var(--row-h)' }}
                 className={`group relative flex items-center gap-1.5 px-1.5 rounded-btn cursor-pointer transition-colors ${
-                  isActive ? 'bg-surface-hi text-text' : 'text-text-2 hover:bg-surface hover:text-text'
+                  isActive
+                    ? 'bg-surface-hi text-text'
+                    : 'text-text-2 hover:bg-surface hover:text-text'
                 }`}
               >
                 {isActive && (
@@ -120,20 +125,29 @@ export default function Sidebar({
                 >
                   <span className={`transition-transform ${isOpen ? 'rotate-90' : ''}`}>▸</span>
                 </button>
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: project.color }} />
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ background: project.color }}
+                />
                 <span className="text-[12px] font-mono truncate flex-1">{project.name}</span>
 
                 {hovered === project.id ? (
                   <span className="flex gap-0.5">
                     <button
-                      onClick={(e) => { e.stopPropagation(); onEdit(project) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEdit(project)
+                      }}
                       className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi text-xs"
                       title="Editar"
                     >
                       ✎
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); if (confirm(`Excluir "${project.name}"?`)) onDelete(project) }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (confirm(`Excluir "${project.name}"?`)) onDelete(project)
+                      }}
                       className="w-[18px] h-[18px] rounded text-text-3 hover:text-red hover:bg-surface-hi text-sm"
                       title="Excluir"
                     >
@@ -142,7 +156,9 @@ export default function Sidebar({
                   </span>
                 ) : (
                   tabs.length > 0 && (
-                    <span className="text-[10px] font-mono text-text-3 px-1 tabular-nums">{tabs.length}</span>
+                    <span className="text-[10px] font-mono text-text-3 px-1 tabular-nums">
+                      {tabs.length}
+                    </span>
                   )
                 )}
               </div>

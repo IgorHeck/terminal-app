@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react'
 
-const COLORS = ['#6366f1', '#8b5cf6', '#22c55e', '#06b6d4', '#f97316', '#a855f7', '#ec4899', '#e4e4e7']
+const COLORS = [
+  '#6366f1',
+  '#8b5cf6',
+  '#22c55e',
+  '#06b6d4',
+  '#f97316',
+  '#a855f7',
+  '#ec4899',
+  '#e4e4e7',
+]
 const SHELLS = ['bash', 'zsh', 'fish', 'powershell.exe', 'cmd.exe']
 
 export default function ProjectModal({ project, onSave, onCancel }) {
@@ -38,7 +47,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       color,
       cwd: cwd.trim(),
       shell: shell.trim() || null,
-      profiles
+      profiles,
     })
   }
 
@@ -81,14 +90,19 @@ export default function ProjectModal({ project, onSave, onCancel }) {
         >
           <option value="">padrão do sistema</option>
           {SHELLS.map((s) => (
-            <option key={s} value={s}>{s}</option>
+            <option key={s} value={s}>
+              {s}
+            </option>
           ))}
         </select>
 
         <label className="block text-[12px] text-text-2 mb-1.5">Perfis de shell (opcional)</label>
         <div className="mb-2 flex flex-col gap-1">
           {profiles.map((p, i) => (
-            <div key={i} className="flex items-center gap-2 text-[12px] font-mono bg-bg-term border border-border-soft rounded-lg px-2 h-8">
+            <div
+              key={i}
+              className="flex items-center gap-2 text-[12px] font-mono bg-bg-term border border-border-soft rounded-lg px-2 h-8"
+            >
               <span className="text-text truncate flex-1">{p.name}</span>
               <span className="text-text-3">{p.shell}</span>
               <button
@@ -114,7 +128,9 @@ export default function ProjectModal({ project, onSave, onCancel }) {
             className="h-9 px-2 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
           >
             {SHELLS.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
           <button

@@ -9,7 +9,10 @@ function reducer(state, action) {
       const { projectId, tab } = action
       return {
         ...state,
-        tabsByProject: { ...tabsByProject, [projectId]: [...(tabsByProject[projectId] || []), tab] },
+        tabsByProject: {
+          ...tabsByProject,
+          [projectId]: [...(tabsByProject[projectId] || []), tab],
+        },
         activeTabByProject: { ...activeTabByProject, [projectId]: tab.id },
       }
     }
@@ -17,11 +20,17 @@ function reducer(state, action) {
       const { projectId, tabId } = action
       return {
         ...state,
-        tabsByProject: { ...tabsByProject, [projectId]: (tabsByProject[projectId] || []).filter((t) => t.id !== tabId) },
+        tabsByProject: {
+          ...tabsByProject,
+          [projectId]: (tabsByProject[projectId] || []).filter((t) => t.id !== tabId),
+        },
       }
     }
     case 'TAB_ACTIVE':
-      return { ...state, activeTabByProject: { ...activeTabByProject, [action.projectId]: action.tabId } }
+      return {
+        ...state,
+        activeTabByProject: { ...activeTabByProject, [action.projectId]: action.tabId },
+      }
     case 'PANE_ADDED': {
       const { projectId, tabId, ptyId } = action
       return {
@@ -61,23 +70,26 @@ const initialState = { tabsByProject: {}, activeTabByProject: {} }
 export function TerminalsProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
-  const newTerminal = useCallback(async (project, kind = 'shell', profile = null) => {
-    const ptyId = await window.api.pty.create({
-      projectId: project.id,
-      shell: profile?.shell || project.shell,
-      cwd: project.cwd,
-    })
-    const id = `tab_${Date.now()}`
-    const count = (state.tabsByProject[project.id] || []).length + 1
-    const tab = {
-      id,
-      panes: [ptyId],
-      name: profile?.name || (kind === 'run' ? `run ${count}` : `shell ${count}`),
-      kind,
-      status: 'idle',
-    }
-    dispatch({ type: 'TAB_ADDED', projectId: project.id, tab })
-  }, [state.tabsByProject])
+  const newTerminal = useCallback(
+    async (project, kind = 'shell', profile = null) => {
+      const ptyId = await window.api.pty.create({
+        projectId: project.id,
+        shell: profile?.shell || project.shell,
+        cwd: project.cwd,
+      })
+      const id = `tab_${Date.now()}`
+      const count = (state.tabsByProject[project.id] || []).length + 1
+      const tab = {
+        id,
+        panes: [ptyId],
+        name: profile?.name || (kind === 'run' ? `run ${count}` : `shell ${count}`),
+        kind,
+        status: 'idle',
+      }
+      dispatch({ type: 'TAB_ADDED', projectId: project.id, tab })
+    },
+    [state.tabsByProject]
+  )
 
   const closeTab = useCallback((projectId, tab) => {
     ;(tab.panes || []).forEach((ptyId) => window.api.pty.kill(ptyId))
@@ -85,7 +97,11 @@ export function TerminalsProvider({ children }) {
   }, [])
 
   const splitTerminal = useCallback(async (project, tab) => {
-    const ptyId = await window.api.pty.create({ projectId: project.id, shell: project.shell, cwd: project.cwd })
+    const ptyId = await window.api.pty.create({
+      projectId: project.id,
+      shell: project.shell,
+      cwd: project.cwd,
+    })
     dispatch({ type: 'PANE_ADDED', projectId: project.id, tabId: tab.id, ptyId })
   }, [])
 
@@ -99,7 +115,9 @@ export function TerminalsProvider({ children }) {
   }, [])
 
   return (
-    <TerminalsContext.Provider value={{ ...state, dispatch, newTerminal, closeTab, splitTerminal, closePane, selectTab }}>
+    <TerminalsContext.Provider
+      value={{ ...state, dispatch, newTerminal, closeTab, splitTerminal, closePane, selectTab }}
+    >
       {children}
     </TerminalsContext.Provider>
   )

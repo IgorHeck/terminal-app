@@ -8,7 +8,10 @@ export default function TerminalPanes({ tab, active, accentKey, onClosePane }) {
   return (
     <div className="absolute inset-0 flex" style={{ display: active ? 'flex' : 'none' }}>
       {panes.map((ptyId, i) => (
-        <div key={ptyId} className={`relative flex-1 min-w-0 ${i > 0 ? 'border-l border-border-soft' : ''}`}>
+        <div
+          key={ptyId}
+          className={`relative flex-1 min-w-0 ${i > 0 ? 'border-l border-border-soft' : ''}`}
+        >
           {panes.length > 1 && (
             <button
               onClick={() => onClosePane(ptyId)}

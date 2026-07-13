@@ -9,7 +9,7 @@ const api = {
     list: () => ipcRenderer.invoke('projects:list'),
     add: (data) => ipcRenderer.invoke('projects:add', data),
     update: (id, patch) => ipcRenderer.invoke('projects:update', id, patch),
-    remove: (id) => ipcRenderer.invoke('projects:remove', id)
+    remove: (id) => ipcRenderer.invoke('projects:remove', id),
   },
   pty: {
     create: (opts) => ipcRenderer.invoke('pty:create', opts),
@@ -32,14 +32,14 @@ const api = {
       const handler = (_e, payload) => cb(payload)
       ipcRenderer.on('pty:exit', handler)
       return () => ipcRenderer.removeListener('pty:exit', handler)
-    }
+    },
   },
   fs: {
     readDir: (path) => ipcRenderer.invoke('fs:readDir', path),
-    readFile: (path) => ipcRenderer.invoke('fs:readFile', path)
+    readFile: (path) => ipcRenderer.invoke('fs:readFile', path),
   },
   app: {
-    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+    openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   },
   win: {
     minimize: () => ipcRenderer.send('window:minimize'),
@@ -50,8 +50,8 @@ const api = {
       const handler = (_e, val) => cb(val)
       ipcRenderer.on('window:maximized', handler)
       return () => ipcRenderer.removeListener('window:maximized', handler)
-    }
-  }
+    },
+  },
 }
 
 contextBridge.exposeInMainWorld('api', api)

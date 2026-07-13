@@ -34,7 +34,10 @@ export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, 
                 </span>
               )}
               <button
-                onClick={(e) => { e.stopPropagation(); onClose(tab) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose(tab)
+                }}
                 className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi opacity-0 group-hover:opacity-100 text-xs"
               >
                 ×
@@ -65,7 +68,10 @@ export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, 
           <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
           <div className="absolute right-0 top-10 z-20 w-44 bg-panel border border-border rounded-token shadow-2xl py-1">
             <button
-              onClick={() => { setMenuOpen(false); onNew() }}
+              onClick={() => {
+                setMenuOpen(false)
+                onNew()
+              }}
               className="w-full text-left px-3 h-8 text-[12px] font-mono text-text-2 hover:bg-surface hover:text-text"
             >
               shell padrão
@@ -73,7 +79,10 @@ export default function TabBar({ tabs, activeTabId, project, onSelect, onClose, 
             {profiles.map((p, i) => (
               <button
                 key={i}
-                onClick={() => { setMenuOpen(false); onNew(p) }}
+                onClick={() => {
+                  setMenuOpen(false)
+                  onNew(p)
+                }}
                 className="w-full text-left px-3 h-8 text-[12px] font-mono text-text-2 hover:bg-surface hover:text-text flex items-center gap-2"
               >
                 <span className="truncate flex-1">{p.name}</span>

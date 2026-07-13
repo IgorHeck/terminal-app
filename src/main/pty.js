@@ -6,10 +6,7 @@ const pty = pkg
 // mapa ptyId -> { proc, projectId, projectName }
 const ptyProcesses = {}
 
-const defaultShell =
-  platform() === 'win32'
-    ? 'powershell.exe'
-    : process.env.SHELL || 'bash'
+const defaultShell = platform() === 'win32' ? 'powershell.exe' : process.env.SHELL || 'bash'
 
 /**
  * Cria um novo pseudo-terminal.
@@ -23,7 +20,7 @@ export function createPty({ ptyId, projectId, projectName, shell, cwd, onData, o
     cols: 80,
     rows: 24,
     cwd: resolvedCwd,
-    env: process.env
+    env: process.env,
   })
 
   proc.onData((data) => onData(ptyId, data))
