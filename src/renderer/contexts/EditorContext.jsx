@@ -18,12 +18,17 @@ function reducer(state, action) {
       }
     }
     case 'FILE_SELECTED':
-      return { ...state, activeFileByProject: { ...activeFileByProject, [action.projectId]: action.path } }
+      return {
+        ...state,
+        activeFileByProject: { ...activeFileByProject, [action.projectId]: action.path },
+      }
     case 'FILE_CLOSED': {
       const { projectId, path } = action
       const remaining = (openFilesByProject[projectId] || []).filter((f) => f.path !== path)
       const wasActive = activeFileByProject[projectId] === path
-      const nextActive = wasActive ? (remaining[remaining.length - 1]?.path ?? null) : activeFileByProject[projectId]
+      const nextActive = wasActive
+        ? (remaining[remaining.length - 1]?.path ?? null)
+        : activeFileByProject[projectId]
       return {
         ...state,
         openFilesByProject: { ...openFilesByProject, [projectId]: remaining },

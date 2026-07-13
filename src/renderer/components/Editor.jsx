@@ -5,7 +5,13 @@ import { highlight } from '../highlight.js'
 // Breadcrumb + gutter com números de linha. Realce de sintaxe vem em
 // branch posterior da Fase 2.
 export default function Editor({ file, project }) {
-  const [state, setState] = useState({ loading: true, content: '', tooLarge: false, binary: false, error: false })
+  const [state, setState] = useState({
+    loading: true,
+    content: '',
+    tooLarge: false,
+    binary: false,
+    error: false,
+  })
 
   useEffect(() => {
     if (!file) return
@@ -18,10 +24,16 @@ export default function Editor({ file, project }) {
         if (r.ok) setState({ loading: false, error: false, ...r.data })
         else setState({ loading: false, content: '', tooLarge: false, binary: false, error: true })
       })
-      .catch(() => alive && setState({ loading: false, content: '', tooLarge: false, binary: false, error: true }))
+      .catch(
+        () =>
+          alive &&
+          setState({ loading: false, content: '', tooLarge: false, binary: false, error: true })
+      )
     return () => {
       alive = false
     }
+    // file?.path é intencional: re-executa só quando o caminho muda, não quando o objeto muda de referência
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file?.path])
 
   // realce só para arquivos não muito grandes (evita travar a UI)

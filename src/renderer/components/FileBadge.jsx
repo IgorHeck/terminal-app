@@ -11,7 +11,7 @@ const BADGES = {
   css: { l: 'CSS', c: '#c39bff' },
   html: { l: 'HTML', c: '#f0883e' },
   py: { l: 'PY', c: '#2bd07a' },
-  java: { l: 'JV', c: '#f0883e' }
+  java: { l: 'JV', c: '#f0883e' },
 }
 
 export function badgeFor(name) {

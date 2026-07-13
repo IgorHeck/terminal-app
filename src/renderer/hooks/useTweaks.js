@@ -7,23 +7,29 @@ export const ACCENTS = [
   { id: 'green', label: 'verde', rgb: '43 208 122' },
   { id: 'cyan', label: 'ciano', rgb: '70 211 230' },
   { id: 'orange', label: 'laranja', rgb: '240 136 62' },
-  { id: 'white', label: 'branco', rgb: '228 228 231' }
+  { id: 'white', label: 'branco', rgb: '228 228 231' },
 ]
 
 export const DENSITIES = [
   { id: 'compact', label: 'compacto' },
   { id: 'cozy', label: 'cozy' },
-  { id: 'roomy', label: 'roomy' }
+  { id: 'roomy', label: 'roomy' },
 ]
 
 export const RUN_LAYOUTS = [
   { id: 'stacked', label: 'empilhado' },
   { id: 'side', label: 'lado a lado' },
-  { id: 'tabs', label: 'abas' }
+  { id: 'tabs', label: 'abas' },
 ]
 
 const KEY = 'terminal-app.tweaks'
-const DEFAULTS = { accent: 'indigo', density: 'roomy', glow: false, showRail: true, runLayout: 'stacked' }
+const DEFAULTS = {
+  accent: 'indigo',
+  density: 'roomy',
+  glow: false,
+  showRail: true,
+  runLayout: 'stacked',
+}
 
 function load() {
   try {

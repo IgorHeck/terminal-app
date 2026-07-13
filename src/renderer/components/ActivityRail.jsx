@@ -6,7 +6,7 @@ const ITEMS = [
   { id: 'explorer', glyph: '🗀', title: 'Explorador' },
   { id: 'projects', glyph: '▤', title: 'Projetos' },
   { id: 'git', glyph: '⎇', title: 'Git' },
-  { id: 'search', glyph: '⌕', title: 'Busca' }
+  { id: 'search', glyph: '⌕', title: 'Busca' },
 ]
 
 export default function ActivityRail({ activeView = 'projects', onSelectView, onOpenSettings }) {

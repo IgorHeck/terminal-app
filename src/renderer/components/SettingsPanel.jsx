@@ -66,12 +66,20 @@ export default function SettingsPanel({ tweaks, onChange, onClose }) {
 
         <Label>Densidade</Label>
         <div className="mb-4">
-          <Segmented options={DENSITIES} value={tweaks.density} onChange={(v) => onChange({ density: v })} />
+          <Segmented
+            options={DENSITIES}
+            value={tweaks.density}
+            onChange={(v) => onChange({ density: v })}
+          />
         </div>
 
         <Label>Layout do Run</Label>
         <div className="mb-4">
-          <Segmented options={RUN_LAYOUTS} value={tweaks.runLayout} onChange={(v) => onChange({ runLayout: v })} />
+          <Segmented
+            options={RUN_LAYOUTS}
+            value={tweaks.runLayout}
+            onChange={(v) => onChange({ runLayout: v })}
+          />
         </div>
 
         <div className="flex items-center justify-between py-1.5">

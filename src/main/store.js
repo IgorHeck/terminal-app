@@ -3,7 +3,7 @@ import { homedir } from 'os'
 
 const store = new Store({
   name: 'projects',
-  defaults: { projects: [] }
+  defaults: { projects: [] },
 })
 
 export function getProjects() {
@@ -23,7 +23,7 @@ export function addProject(project) {
     cwd: project.cwd || homedir(),
     shell: project.shell || null,
     profiles: Array.isArray(project.profiles) ? project.profiles : [],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
   }
   projects.push(newProject)
   saveProjects(projects)

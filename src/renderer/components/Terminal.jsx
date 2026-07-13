@@ -15,14 +15,19 @@ const BASE_THEME = {
   magenta: '#c39bff',
   cyan: '#46d3e6',
   white: '#e9e9ec',
-  brightBlack: '#56565f'
+  brightBlack: '#56565f',
 }
 
 function buildTheme() {
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim()
   const [r, g, b] = (raw || '99 102 241').split(/\s+/)
   const rgb = `rgb(${r}, ${g}, ${b})`
-  return { ...BASE_THEME, cursor: rgb, blue: rgb, selectionBackground: `rgba(${r}, ${g}, ${b}, 0.33)` }
+  return {
+    ...BASE_THEME,
+    cursor: rgb,
+    blue: rgb,
+    selectionBackground: `rgba(${r}, ${g}, ${b}, 0.33)`,
+  }
 }
 
 export default function Terminal({ tab, active, accentKey }) {
@@ -56,7 +61,7 @@ export default function Terminal({ tab, active, accentKey }) {
       lineHeight: 1.35,
       cursorBlink: true,
       theme: buildTheme(),
-      allowProposedApi: true
+      allowProposedApi: true,
     })
 
     const fit = new FitAddon()
@@ -148,7 +153,7 @@ export default function Terminal({ tab, active, accentKey }) {
         } catch {}
       })
     }
-  }, [active])
+  }, [active, tab.ptyId])
 
   function handleSearchKey(e) {
     if (e.key === 'Enter') {

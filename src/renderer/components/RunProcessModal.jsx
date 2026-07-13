@@ -13,7 +13,10 @@ export default function RunProcessModal({ onSave, onCancel }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onMouseDown={onCancel}>
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      onMouseDown={onCancel}
+    >
       <form
         onMouseDown={(e) => e.stopPropagation()}
         onSubmit={submit}
@@ -47,10 +50,17 @@ export default function RunProcessModal({ onSave, onCancel }) {
         />
 
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="h-9 px-4 rounded-lg text-sm text-text-2 hover:bg-surface-hi">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-9 px-4 rounded-lg text-sm text-text-2 hover:bg-surface-hi"
+          >
             Cancelar
           </button>
-          <button type="submit" className="h-9 px-4 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent/90">
+          <button
+            type="submit"
+            className="h-9 px-4 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent/90"
+          >
             Criar
           </button>
         </div>

@@ -4,7 +4,14 @@ import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync } from 'fs'
 import { readdir, readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
-import { createPty, writePty, resizePty, killPty, killAllForProject, getPtyProjectName } from './pty.js'
+import {
+  createPty,
+  writePty,
+  resizePty,
+  killPty,
+  killAllForProject,
+  getPtyProjectName,
+} from './pty.js'
 import { checkCommand } from './guard.js'
 import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
@@ -54,8 +61,8 @@ function createWindow() {
       preload: join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
-    }
+      sandbox: false,
+    },
   })
 
   // sincroniza o estado de maximização com a title bar customizada
@@ -159,7 +166,7 @@ ipcMain.handle('pty:create', (_e, { projectId, shell, cwd } = {}) => {
     shell,
     cwd,
     onData: (id, data) => sendToRenderer('pty:data', { ptyId: id, data }),
-    onExit: (id, exitCode) => sendToRenderer('pty:exit', { ptyId: id, exitCode })
+    onExit: (id, exitCode) => sendToRenderer('pty:exit', { ptyId: id, exitCode }),
   })
   lineBuffers[ptyId] = ''
   return ptyId
@@ -175,7 +182,10 @@ ipcMain.on('pty:write', (_e, ptyId, data) => {
       const projectName = getPtyProjectName(ptyId)
       if (action === 'BLOCK') {
         writeSecurityLog('BLOCK', projectName, ptyId, command)
-        sendToRenderer('pty:data', { ptyId, data: `\r\n\x1b[31m✖ comando bloqueado: ${reason}\x1b[0m\r\n` })
+        sendToRenderer('pty:data', {
+          ptyId,
+          data: `\r\n\x1b[31m✖ comando bloqueado: ${reason}\x1b[0m\r\n`,
+        })
         return
       }
       if (action === 'CONFIRM') {
@@ -219,7 +229,7 @@ function applyCsp() {
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
-      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] }
+      responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] },
     })
   })
 }

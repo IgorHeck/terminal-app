@@ -39,7 +39,10 @@ export default function CommandPalette({ items, onClose, onSelect }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-24" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-24"
+      onMouseDown={onClose}
+    >
       <div
         onMouseDown={(e) => e.stopPropagation()}
         className="w-[560px] max-w-[90vw] bg-panel border border-border rounded-token shadow-2xl overflow-hidden"
@@ -63,11 +66,18 @@ export default function CommandPalette({ items, onClose, onSelect }) {
               onClick={() => onSelect(it)}
               className={`flex items-center gap-2 px-4 h-9 cursor-pointer ${i === index ? 'bg-surface-hi' : ''}`}
             >
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: it.color || 'var(--text-4)' }} />
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{ background: it.color || 'var(--text-4)' }}
+              />
               <span className="text-[13px] text-text truncate">{it.label}</span>
-              {it.sub && <span className="text-[11px] text-text-4 font-mono truncate">{it.sub}</span>}
+              {it.sub && (
+                <span className="text-[11px] text-text-4 font-mono truncate">{it.sub}</span>
+              )}
               <span className="flex-1" />
-              <span className="text-[9px] uppercase font-bold text-text-3 bg-surface rounded px-1">{it.group}</span>
+              <span className="text-[9px] uppercase font-bold text-text-3 bg-surface rounded px-1">
+                {it.group}
+              </span>
             </div>
           ))}
         </div>

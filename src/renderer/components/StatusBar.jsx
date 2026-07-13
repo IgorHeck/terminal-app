@@ -21,7 +21,9 @@ export default function StatusBar({ project }) {
     <div className="h-[26px] flex items-center justify-between bg-panel-2 border-t border-border-soft flex-shrink-0">
       <div className="flex items-center h-full divide-x divide-border-soft">
         <Item color={project?.color}>⎇ {project ? 'main' : '—'}</Item>
-        <Item>dev <span className="text-text-4">:—</span></Item>
+        <Item>
+          dev <span className="text-text-4">:—</span>
+        </Item>
       </div>
       <div className="flex items-center h-full divide-x divide-border-soft">
         <Item>Ln —, Col —</Item>

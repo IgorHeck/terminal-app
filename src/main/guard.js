@@ -5,17 +5,17 @@
 
 // Bloqueados: destrutivos e irreversíveis. NUNCA executam.
 const BLOCKED_PATTERNS = [
-  /rm\s+-rf\s+\/(\s|$)/,          // rm -rf /
-  /rm\s+-rf\s+~(\s|$)/,           // rm -rf ~
-  /rm\s+-rf\s+\*/,                // rm -rf *
+  /rm\s+-rf\s+\/(\s|$)/, // rm -rf /
+  /rm\s+-rf\s+~(\s|$)/, // rm -rf ~
+  /rm\s+-rf\s+\*/, // rm -rf *
   /rm\s+-rf\s+--no-preserve-root/,
-  /:\(\)\s*\{.*\|.*&.*\}/,        // fork bomb
-  /mkfs\./,                       // formatar partição
-  /\bdd\b.*\bof=\/dev\//,         // sobrescrever disco
-  /shutdown\s+(-h|-r)?\s*now/,    // desligar
+  /:\(\)\s*\{.*\|.*&.*\}/, // fork bomb
+  /mkfs\./, // formatar partição
+  /\bdd\b.*\bof=\/dev\//, // sobrescrever disco
+  /shutdown\s+(-h|-r)?\s*now/, // desligar
   /\breboot\b/,
   /\b(curl|wget)\b.*\|\s*(sudo\s+)?(bash|sh|zsh)\b/, // baixar e executar
-  />\s*\/dev\/sd[a-z]/            // escrever em disco bruto
+  />\s*\/dev\/sd[a-z]/, // escrever em disco bruto
 ]
 
 // Sensíveis: pedem confirmação explícita do usuário.
@@ -29,7 +29,7 @@ const CONFIRM_PATTERNS = [
   /\bgit\s+(reset\s+--hard|clean\s+-[a-z]*f|push\s+.*--force)/,
   /\bdocker\s+(system\s+prune|rm\s+-f|volume\s+rm)/,
   /\bnpm\s+(unpublish|cache\s+clean)/,
-  /\btruncate\b/
+  /\btruncate\b/,
 ]
 
 /**
