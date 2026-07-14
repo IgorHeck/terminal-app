@@ -58,6 +58,16 @@ function reducer(state, action) {
       }
       return changed ? { ...state, runProcessesByProject: next } : state
     }
+    case 'PROCS_RESTORED': {
+      const { projectId, procs } = action
+      return {
+        ...state,
+        runProcessesByProject: {
+          ...state.runProcessesByProject,
+          [projectId]: procs.map((p) => ({ ...p, status: 'idle', ptyId: null })),
+        },
+      }
+    }
     case 'PROJECT_REMOVED': {
       const { [action.projectId]: _, ...rest } = state.runProcessesByProject
       return { ...state, runProcessesByProject: rest }
@@ -121,6 +131,10 @@ export function RunProvider({ children }) {
     if (proc.port) window.api.app.openExternal(`http://localhost:${proc.port}`)
   }, [])
 
+  const restoreProjectSession = useCallback((projectId, procs) => {
+    dispatch({ type: 'PROCS_RESTORED', projectId, procs })
+  }, [])
+
   return (
     <RunContext.Provider
       value={{
@@ -131,6 +145,7 @@ export function RunProvider({ children }) {
         stopRunProcess,
         removeRunProcess,
         openRunPort,
+        restoreProjectSession,
       }}
     >
       {children}

@@ -33,6 +33,9 @@ function AppLayout() {
     saveProject,
     deleteProject,
     confirmRun,
+    sessionLoaded,
+    sessionTweaks,
+    sessionLayout,
   } = useProjects()
   const {
     tabsByProject,
@@ -59,33 +62,92 @@ function AppLayout() {
   const [activeView, setActiveView] = useState('projects')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
-  const [tweaks, setTweak] = useTweaks()
-  const [sidebarWidth, onSidebarResize] = useResizable({
+  const [tweaks, setTweak] = useTweaks(sessionTweaks)
+
+  const [sidebarWidth, onSidebarResize, setSidebarWidth] = useResizable({
     axis: 'x',
     initial: 220,
     min: 180,
     max: 360,
   })
-  const [termHeight, onTermResize] = useResizable({
+  const [termHeight, onTermResize, setTermHeight] = useResizable({
     axis: 'y',
     initial: 300,
     min: 120,
     max: 900,
     invert: true,
   })
-  const [explorerWidth, onExplorerResize] = useResizable({
+  const [explorerWidth, onExplorerResize, setExplorerWidth] = useResizable({
     axis: 'x',
     initial: 244,
     min: 180,
     max: 420,
   })
-  const [runWidth, onRunResize] = useResizable({
+  const [runWidth, onRunResize, setRunWidth] = useResizable({
     axis: 'x',
     initial: 386,
     min: 280,
     max: 640,
     invert: true,
   })
+
+  // Restaura dimensões dos painéis quando o layout da sessão chega
+  useEffect(() => {
+    if (!sessionLayout) return
+    if (sessionLayout.sidebarWidth) setSidebarWidth(sessionLayout.sidebarWidth)
+    if (sessionLayout.explorerWidth) setExplorerWidth(sessionLayout.explorerWidth)
+    if (sessionLayout.termHeight) setTermHeight(sessionLayout.termHeight)
+    if (sessionLayout.runWidth) setRunWidth(sessionLayout.runWidth)
+  }, [sessionLayout, setSidebarWidth, setExplorerWidth, setTermHeight, setRunWidth])
+
+  // Salva a sessão com debounce de 500 ms sempre que o estado relevante muda.
+  // O guard sessionLoaded garante que não sobrescrevemos a sessão antes de carregá-la.
+  useEffect(() => {
+    if (!sessionLoaded) return
+    const timer = setTimeout(() => {
+      const byProject = {}
+      for (const proj of projects) {
+        byProject[proj.id] = {
+          tabs: (tabsByProject[proj.id] || []).map((t) => ({
+            id: t.id,
+            name: t.name,
+            kind: t.kind,
+            paneCount: t.panes.length,
+          })),
+          activeTabId: activeTabByProject[proj.id] || null,
+          openFiles: openFilesByProject[proj.id] || [],
+          activeFilePath: activeFileByProject[proj.id] || null,
+          runProcesses: (runProcessesByProject[proj.id] || []).map((proc) => ({
+            id: proc.id,
+            name: proc.name,
+            command: proc.command,
+            port: proc.port,
+          })),
+        }
+      }
+      window.api.session.save({
+        tweaks,
+        activeProjectId,
+        layout: { sidebarWidth, explorerWidth, termHeight, runWidth },
+        byProject,
+      })
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [
+    sessionLoaded,
+    tweaks,
+    activeProjectId,
+    sidebarWidth,
+    explorerWidth,
+    termHeight,
+    runWidth,
+    tabsByProject,
+    activeTabByProject,
+    openFilesByProject,
+    activeFileByProject,
+    runProcessesByProject,
+    projects,
+  ])
 
   const tabs = tabsByProject[activeProjectId] || []
   const activeTabId = activeTabByProject[activeProjectId] || null

@@ -55,6 +55,14 @@ function reducer(state, action) {
         },
       }
     }
+    case 'TABS_RESTORED': {
+      const { projectId, tabs, activeTabId } = action
+      return {
+        ...state,
+        tabsByProject: { ...tabsByProject, [projectId]: tabs },
+        activeTabByProject: { ...activeTabByProject, [projectId]: activeTabId },
+      }
+    }
     case 'PROJECT_REMOVED': {
       const { [action.projectId]: _, ...restTabs } = tabsByProject
       const { [action.projectId]: __, ...restActive } = activeTabByProject
@@ -114,9 +122,46 @@ export function TerminalsProvider({ children }) {
     dispatch({ type: 'TAB_ACTIVE', projectId: project.id, tabId: tab.id })
   }, [])
 
+  // Restaura as abas de um projeto a partir do snapshot de sessão.
+  // Cria PTYs reais para cada pane — o scrollback não é restaurado (Fase 12.3).
+  const restoreProjectSession = useCallback(async (project, savedTabs, activeTabId) => {
+    const hydratedTabs = await Promise.all(
+      savedTabs.map(async (savedTab) => {
+        const panes = await Promise.all(
+          Array.from({ length: savedTab.paneCount || 1 }, () =>
+            window.api.pty.create({ projectId: project.id, shell: project.shell, cwd: project.cwd })
+          )
+        )
+        return {
+          id: savedTab.id,
+          name: savedTab.name,
+          kind: savedTab.kind || 'shell',
+          panes,
+          status: 'idle',
+        }
+      })
+    )
+    const resolvedActiveId = activeTabId || hydratedTabs[0]?.id || null
+    dispatch({
+      type: 'TABS_RESTORED',
+      projectId: project.id,
+      tabs: hydratedTabs,
+      activeTabId: resolvedActiveId,
+    })
+  }, [])
+
   return (
     <TerminalsContext.Provider
-      value={{ ...state, dispatch, newTerminal, closeTab, splitTerminal, closePane, selectTab }}
+      value={{
+        ...state,
+        dispatch,
+        newTerminal,
+        closeTab,
+        splitTerminal,
+        closePane,
+        selectTab,
+        restoreProjectSession,
+      }}
     >
       {children}
     </TerminalsContext.Provider>

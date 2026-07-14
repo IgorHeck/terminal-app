@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react'
 import { useTerminals } from './TerminalsContext.jsx'
 import { useEditor } from './EditorContext.jsx'
 import { useRun } from './RunContext.jsx'
@@ -44,16 +44,47 @@ const initialState = {
 
 export function ProjectsProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
-  const { dispatch: dispatchTerminals } = useTerminals()
-  const { dispatch: dispatchEditor } = useEditor()
-  const { dispatch: dispatchRun } = useRun()
+  const { dispatch: dispatchTerminals, restoreProjectSession: restoreTerminals } = useTerminals()
+  const { dispatch: dispatchEditor, restoreProjectSession: restoreEditor } = useEditor()
+  const { dispatch: dispatchRun, restoreProjectSession: restoreRun } = useRun()
+
+  // Estado de sessão exposto para AppLayout (tweaks, layout, flag de carregado)
+  const [sessionLoaded, setSessionLoaded] = useState(false)
+  const [sessionTweaks, setSessionTweaks] = useState(null)
+  const [sessionLayout, setSessionLayout] = useState(null)
 
   useEffect(() => {
-    window.api.projects.list().then((list) => {
-      dispatch({ type: 'LOADED', projects: list })
-      if (list.length) dispatch({ type: 'SET_ACTIVE', id: list[0].id })
-    })
-  }, [])
+    async function init() {
+      const [projectList, session] = await Promise.all([
+        window.api.projects.list(),
+        window.api.session.load(),
+      ])
+
+      dispatch({ type: 'LOADED', projects: projectList })
+
+      const savedActiveId = session.activeProjectId
+      if (savedActiveId && projectList.some((p) => p.id === savedActiveId)) {
+        dispatch({ type: 'SET_ACTIVE', id: savedActiveId })
+      } else if (projectList.length) {
+        dispatch({ type: 'SET_ACTIVE', id: projectList[0].id })
+      }
+
+      // Restaura o estado por projeto
+      for (const project of projectList) {
+        const ps = session.byProject?.[project.id]
+        if (!ps) continue
+        if (ps.tabs?.length) await restoreTerminals(project, ps.tabs, ps.activeTabId)
+        if (ps.openFiles?.length) restoreEditor(project.id, ps.openFiles, ps.activeFilePath)
+        if (ps.runProcesses?.length) restoreRun(project.id, ps.runProcesses)
+      }
+
+      setSessionTweaks(session.tweaks ?? null)
+      setSessionLayout(session.layout ?? null)
+      setSessionLoaded(true)
+    }
+
+    init()
+  }, [restoreTerminals, restoreEditor, restoreRun])
 
   useEffect(() => {
     return window.api.pty.onConfirm((payload) => dispatch({ type: 'SET_CONFIRM', payload }))
@@ -90,7 +121,17 @@ export function ProjectsProvider({ children }) {
 
   return (
     <ProjectsContext.Provider
-      value={{ ...state, activeProject, dispatch, saveProject, deleteProject, confirmRun }}
+      value={{
+        ...state,
+        activeProject,
+        dispatch,
+        saveProject,
+        deleteProject,
+        confirmRun,
+        sessionLoaded,
+        sessionTweaks,
+        sessionLayout,
+      }}
     >
       {children}
     </ProjectsContext.Provider>
