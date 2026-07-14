@@ -41,11 +41,6 @@ export default function Terminal({ tab, active, accentKey }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const openSearch = useCallback(() => {
-    searchOpenRef.current = true
-    setSearchOpen(true)
-  }, [])
-
   const closeSearch = useCallback(() => {
     searchOpenRef.current = false
     setSearchOpen(false)

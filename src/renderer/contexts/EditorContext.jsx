@@ -35,6 +35,14 @@ function reducer(state, action) {
         activeFileByProject: { ...activeFileByProject, [projectId]: nextActive },
       }
     }
+    case 'FILES_RESTORED': {
+      const { projectId, openFiles, activeFilePath } = action
+      return {
+        ...state,
+        openFilesByProject: { ...openFilesByProject, [projectId]: openFiles },
+        activeFileByProject: { ...activeFileByProject, [projectId]: activeFilePath },
+      }
+    }
     case 'PROJECT_REMOVED': {
       const { [action.projectId]: _, ...restOpen } = openFilesByProject
       const { [action.projectId]: __, ...restActive } = activeFileByProject
@@ -63,8 +71,14 @@ export function EditorProvider({ children }) {
     dispatch({ type: 'FILE_CLOSED', projectId, path: file.path })
   }, [])
 
+  const restoreProjectSession = useCallback((projectId, openFiles, activeFilePath) => {
+    dispatch({ type: 'FILES_RESTORED', projectId, openFiles, activeFilePath })
+  }, [])
+
   return (
-    <EditorContext.Provider value={{ ...state, dispatch, openFile, selectFile, closeFile }}>
+    <EditorContext.Provider
+      value={{ ...state, dispatch, openFile, selectFile, closeFile, restoreProjectSession }}
+    >
       {children}
     </EditorContext.Provider>
   )

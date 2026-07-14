@@ -38,6 +38,10 @@ const api = {
     readDir: (path) => ipcRenderer.invoke('fs:readDir', path),
     readFile: (path) => ipcRenderer.invoke('fs:readFile', path),
   },
+  session: {
+    load: () => ipcRenderer.invoke('session:load'),
+    save: (data) => ipcRenderer.invoke('session:save', data),
+  },
   app: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   },

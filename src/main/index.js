@@ -15,6 +15,7 @@ import {
 import { checkCommand } from './guard.js'
 import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
+import { getSession, saveSession } from './session.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -140,6 +141,14 @@ safeHandle('fs:readFile', async (_e, filePath) => {
   const buf = await readFile(abs)
   const binary = buf.includes(0)
   return { content: binary ? '' : buf.toString('utf8'), tooLarge: false, binary }
+})
+
+// ---------------------------------------------------------------
+// IPC — Sessão
+// ---------------------------------------------------------------
+ipcMain.handle('session:load', () => getSession())
+ipcMain.handle('session:save', (_e, data) => {
+  saveSession(data)
 })
 
 // ---------------------------------------------------------------
