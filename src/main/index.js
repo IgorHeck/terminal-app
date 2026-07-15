@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell, session } from 'electron'
 import { join, dirname, resolve, relative, isAbsolute } from 'path'
 import { fileURLToPath } from 'url'
-import { existsSync, mkdirSync, appendFileSync } from 'fs'
+import { existsSync, mkdirSync, appendFileSync, watch } from 'fs'
 import { readdir, readFile, stat } from 'fs/promises'
 import { homedir } from 'os'
 import {
@@ -16,6 +16,7 @@ import { checkCommand } from './guard.js'
 import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
 import { getSession, saveSession } from './session.js'
+import { getState, getDiff } from './git.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -152,13 +153,78 @@ ipcMain.handle('session:save', (_e, data) => {
 })
 
 // ---------------------------------------------------------------
+// Git — watcher de repositório por projeto
+// ---------------------------------------------------------------
+const gitWatchers = new Map() // projectId → FSWatcher
+const gitDebounceTimers = new Map() // projectId → setTimeout handle
+const GIT_DEBOUNCE_MS = 300
+
+function scheduleGitChanged(projectId) {
+  if (gitDebounceTimers.has(projectId)) clearTimeout(gitDebounceTimers.get(projectId))
+  gitDebounceTimers.set(
+    projectId,
+    setTimeout(() => {
+      gitDebounceTimers.delete(projectId)
+      sendToRenderer('git:changed', { projectId })
+    }, GIT_DEBOUNCE_MS)
+  )
+}
+
+function startGitWatcher(project) {
+  const { id, cwd } = project
+  if (gitWatchers.has(id)) return
+  const gitDir = join(resolve(expandHome(cwd)), '.git')
+  if (!existsSync(gitDir)) return
+  try {
+    const watcher = watch(gitDir, { recursive: true }, (_event, filename) => {
+      if (filename && filename.endsWith('index.lock')) return
+      scheduleGitChanged(id)
+    })
+    watcher.on('error', () => stopGitWatcher(id))
+    gitWatchers.set(id, watcher)
+  } catch {
+    // fs.watch não suportado ou diretório inacessível — ignorar
+  }
+}
+
+function stopGitWatcher(projectId) {
+  const w = gitWatchers.get(projectId)
+  if (w) {
+    w.close()
+    gitWatchers.delete(projectId)
+  }
+  if (gitDebounceTimers.has(projectId)) {
+    clearTimeout(gitDebounceTimers.get(projectId))
+    gitDebounceTimers.delete(projectId)
+  }
+}
+
+safeHandle('git:state', async (_e, projectId) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  startGitWatcher(project)
+  return getState(resolve(expandHome(project.cwd)))
+})
+
+safeHandle('git:diff', async (_e, projectId, filePath, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return getDiff(resolve(expandHome(project.cwd)), filePath, opts)
+})
+
+// ---------------------------------------------------------------
 // IPC — Projetos
 // ---------------------------------------------------------------
 ipcMain.handle('projects:list', () => getProjects())
-ipcMain.handle('projects:add', (_e, data) => addProject(data))
+ipcMain.handle('projects:add', (_e, data) => {
+  const project = addProject(data)
+  startGitWatcher(project)
+  return project
+})
 ipcMain.handle('projects:update', (_e, id, patch) => updateProject(id, patch))
 ipcMain.handle('projects:remove', (_e, id) => {
   killAllForProject(id)
+  stopGitWatcher(id)
   return removeProject(id)
 })
 
@@ -249,6 +315,7 @@ function applyCsp() {
 app.whenReady().then(() => {
   applyCsp()
   createWindow()
+  getProjects().forEach(startGitWatcher)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
