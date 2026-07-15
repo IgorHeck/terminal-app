@@ -42,6 +42,16 @@ const api = {
     load: () => ipcRenderer.invoke('session:load'),
     save: (data) => ipcRenderer.invoke('session:save', data),
   },
+  git: {
+    getState: (projectId) => ipcRenderer.invoke('git:state', projectId),
+    getDiff: (projectId, filePath, opts) =>
+      ipcRenderer.invoke('git:diff', projectId, filePath, opts),
+    onChanged: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('git:changed', handler)
+      return () => ipcRenderer.removeListener('git:changed', handler)
+    },
+  },
   app: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   },
