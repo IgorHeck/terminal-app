@@ -60,7 +60,7 @@ function AppLayout() {
     removeRunProcess,
     openRunPort,
   } = useRun()
-  const { activeGitState, gitStateByProject } = useGit()
+  const { activeGitState } = useGit()
 
   const [activeView, setActiveView] = useState('explorer')
   const [settingsOpen, setSettingsOpen] = useState(false)
