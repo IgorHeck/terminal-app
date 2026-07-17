@@ -142,10 +142,6 @@ export default function GitPanel({ width = 244 }) {
       style={{ width }}
       className="flex-shrink-0 bg-panel border-r border-border-soft flex flex-col h-full"
     >
-      <div
-        style={{ width }}
-        className="flex-shrink-0 bg-panel border-r border-border-soft flex flex-col h-full"
-      >
         <Header branch={head} />
 
         <div className="flex-1 overflow-auto">
@@ -196,7 +192,6 @@ export default function GitPanel({ width = 244 }) {
             </div>
           )}
         </div>
-      </div>
     </div>
   )
 }
