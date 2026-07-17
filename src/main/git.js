@@ -177,6 +177,7 @@ export function parseNumstat(stdout) {
  * @typedef {{
  *   isRepo: boolean,
  *   gitInstalled: boolean,
+ *   root: string,
  *   head: string,
  *   upstream: string|null,
  *   ahead: number,
@@ -189,18 +190,18 @@ export function parseNumstat(stdout) {
 /**
  * Retorna o estado git completo de um projeto.
  * É o dado retornado pelo invoke `git:state`.
- * @param {string} cwd
+ * @param {string} cwd  caminho absoluto do projeto (já expandido)
  * @returns {Promise<GitState>}
  */
 export async function getState(cwd) {
   const gitInstalled = await isGitInstalled()
   if (!gitInstalled) {
-    return { isRepo: false, gitInstalled: false, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [] }
+    return { isRepo: false, gitInstalled: false, root: cwd, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [] }
   }
 
   const repo = await isRepo(cwd)
   if (!repo) {
-    return { isRepo: false, gitInstalled: true, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [] }
+    return { isRepo: false, gitInstalled: true, root: cwd, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [] }
   }
 
   const [statusOut, logOut] = await Promise.all([
@@ -211,7 +212,7 @@ export async function getState(cwd) {
   const { head, upstream, ahead, behind, changes } = parseStatus(statusOut)
   const lastCommits = parseLog(logOut)
 
-  return { isRepo: true, gitInstalled: true, head, upstream, ahead, behind, changes, lastCommits }
+  return { isRepo: true, gitInstalled: true, root: cwd, head, upstream, ahead, behind, changes, lastCommits }
 }
 
 // ---------------------------------------------------------------
