@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 
 // Barra de título (44px) — DESIGN.md §6 (1).
 // frame:false na BrowserWindow; arraste via -webkit-app-region.
-export default function TitleBar({ project, onOpenSearch }) {
+export default function TitleBar({ project, gitState, onOpenSearch, onOpenGit }) {
   const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
@@ -16,6 +16,11 @@ export default function TitleBar({ project, onOpenSearch }) {
   }, [])
 
   const logoColor = project?.color || 'rgb(var(--accent-rgb))'
+
+  // Informações git para o botão da title bar
+  const isRepo = gitState?.isRepo ?? false
+  const branch = isRepo ? (gitState.head || 'HEAD') : null
+  const hasChanges = isRepo && gitState.changes.length > 0
 
   return (
     <div
@@ -41,7 +46,7 @@ export default function TitleBar({ project, onOpenSearch }) {
         </div>
       )}
 
-      {/* busca central (Ctrl K) — roadmap, sem ação ainda */}
+      {/* busca central (Ctrl K) */}
       <div className="flex-1 flex justify-center" style={{ WebkitAppRegion: 'no-drag' }}>
         <button
           type="button"
@@ -57,13 +62,26 @@ export default function TitleBar({ project, onOpenSearch }) {
 
       {/* ações + controles de janela */}
       <div className="flex items-center gap-1 flex-shrink-0" style={{ WebkitAppRegion: 'no-drag' }}>
+        {/* Botão git — mostra branch e bolinha quando há mudanças */}
         <button
           type="button"
-          title="Git"
-          className="w-7 h-7 rounded-btn flex items-center justify-center text-text-3 hover:text-text hover:bg-surface"
+          title={branch ? `Git — ${branch}${hasChanges ? ' (mudanças)' : ''}` : 'Git'}
+          onClick={project ? onOpenGit : undefined}
+          className={`h-7 px-2 rounded-btn flex items-center gap-1 text-[11px] font-mono transition-colors ${
+            project
+              ? 'text-text-3 hover:text-text hover:bg-surface cursor-pointer'
+              : 'text-text-4 cursor-default'
+          }`}
         >
-          ⎇
+          <span className="text-[14px]">⎇</span>
+          {branch && (
+            <span className="max-w-[120px] truncate text-text-2">{branch}</span>
+          )}
+          {hasChanges && (
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block flex-shrink-0" />
+          )}
         </button>
+
         <button
           type="button"
           title="Notificações"
