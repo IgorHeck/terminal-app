@@ -43,6 +43,7 @@ const api = {
     save: (data) => ipcRenderer.invoke('session:save', data),
   },
   git: {
+    // Leitura (Fase 7)
     getState: (projectId) => ipcRenderer.invoke('git:state', projectId),
     getDiff: (projectId, filePath, opts) =>
       ipcRenderer.invoke('git:diff', projectId, filePath, opts),
@@ -51,6 +52,34 @@ const api = {
       ipcRenderer.on('git:changed', handler)
       return () => ipcRenderer.removeListener('git:changed', handler)
     },
+    // 8.1 Stage / Unstage / Discard
+    stage: (projectId, paths) => ipcRenderer.invoke('git:stage', projectId, paths),
+    unstage: (projectId, paths) => ipcRenderer.invoke('git:unstage', projectId, paths),
+    discard: (projectId, tracked, untracked) =>
+      ipcRenderer.invoke('git:discard', projectId, tracked, untracked),
+    // 8.2 Commit
+    commit: (projectId, message, opts) =>
+      ipcRenderer.invoke('git:commit', projectId, message, opts),
+    // 8.4 Branches
+    checkout: (projectId, branch) => ipcRenderer.invoke('git:checkout', projectId, branch),
+    createBranch: (projectId, name, opts) =>
+      ipcRenderer.invoke('git:createBranch', projectId, name, opts),
+    deleteBranch: (projectId, name, opts) =>
+      ipcRenderer.invoke('git:deleteBranch', projectId, name, opts),
+    // 8.5 Push / Pull / Fetch
+    push: (projectId, opts) => ipcRenderer.invoke('git:push', projectId, opts),
+    pull: (projectId) => ipcRenderer.invoke('git:pull', projectId),
+    fetch: (projectId, opts) => ipcRenderer.invoke('git:fetch', projectId, opts),
+    // 8.6 Stash
+    stashList: (projectId) => ipcRenderer.invoke('git:stashList', projectId),
+    stashPush: (projectId, opts) => ipcRenderer.invoke('git:stashPush', projectId, opts),
+    stashPop: (projectId, ref) => ipcRenderer.invoke('git:stashPop', projectId, ref),
+    stashDrop: (projectId, ref) => ipcRenderer.invoke('git:stashDrop', projectId, ref),
+    // 8.6 Commit detail
+    commitDetail: (projectId, hash) => ipcRenderer.invoke('git:commitDetail', projectId, hash),
+    // 8.6 Apply patch (hunk staging)
+    applyPatch: (projectId, patch, opts) =>
+      ipcRenderer.invoke('git:applyPatch', projectId, patch, opts),
   },
   app: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),

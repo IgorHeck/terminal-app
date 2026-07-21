@@ -16,7 +16,26 @@ import { checkCommand } from './guard.js'
 import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
 import { getSession, saveSession } from './session.js'
-import { getState, getDiff } from './git.js'
+import {
+  getState,
+  getDiff,
+  stageFiles,
+  unstageFiles,
+  discardFiles,
+  commitChanges,
+  checkoutBranch,
+  createBranch,
+  deleteBranch,
+  push,
+  pull,
+  fetchRemote,
+  getStashList,
+  stashPush,
+  stashPop,
+  stashDrop,
+  getCommitDetail,
+  applyPatch,
+} from './git.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -210,6 +229,116 @@ safeHandle('git:diff', async (_e, projectId, filePath, opts) => {
   const project = getProjects().find((p) => p.id === projectId)
   if (!project) throw new Error('projeto não encontrado')
   return getDiff(resolve(expandHome(project.cwd)), filePath, opts)
+})
+
+// --- 8.1 Stage / Unstage / Discard ---
+
+safeHandle('git:stage', async (_e, projectId, paths) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  await stageFiles(resolve(expandHome(project.cwd)), paths)
+})
+
+safeHandle('git:unstage', async (_e, projectId, paths) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  await unstageFiles(resolve(expandHome(project.cwd)), paths)
+})
+
+safeHandle('git:discard', async (_e, projectId, trackedPaths, untrackedPaths) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  await discardFiles(resolve(expandHome(project.cwd)), trackedPaths, untrackedPaths)
+})
+
+// --- 8.2 Commit ---
+
+safeHandle('git:commit', async (_e, projectId, message, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return commitChanges(resolve(expandHome(project.cwd)), message, opts)
+})
+
+// --- 8.4 Branches ---
+
+safeHandle('git:checkout', async (_e, projectId, branch) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return checkoutBranch(resolve(expandHome(project.cwd)), branch)
+})
+
+safeHandle('git:createBranch', async (_e, projectId, name, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return createBranch(resolve(expandHome(project.cwd)), name, opts)
+})
+
+safeHandle('git:deleteBranch', async (_e, projectId, name, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return deleteBranch(resolve(expandHome(project.cwd)), name, opts)
+})
+
+// --- 8.5 Push / Pull / Fetch ---
+
+safeHandle('git:push', async (_e, projectId, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return push(resolve(expandHome(project.cwd)), opts)
+})
+
+safeHandle('git:pull', async (_e, projectId) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return pull(resolve(expandHome(project.cwd)))
+})
+
+safeHandle('git:fetch', async (_e, projectId, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return fetchRemote(resolve(expandHome(project.cwd)), opts)
+})
+
+// --- 8.6 Stash ---
+
+safeHandle('git:stashList', async (_e, projectId) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return getStashList(resolve(expandHome(project.cwd)))
+})
+
+safeHandle('git:stashPush', async (_e, projectId, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return stashPush(resolve(expandHome(project.cwd)), opts)
+})
+
+safeHandle('git:stashPop', async (_e, projectId, ref) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return stashPop(resolve(expandHome(project.cwd)), ref)
+})
+
+safeHandle('git:stashDrop', async (_e, projectId, ref) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return stashDrop(resolve(expandHome(project.cwd)), ref)
+})
+
+// --- 8.6 Commit detail ---
+
+safeHandle('git:commitDetail', async (_e, projectId, hash) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return getCommitDetail(resolve(expandHome(project.cwd)), hash)
+})
+
+// --- 8.6 Apply patch (hunk staging) ---
+
+safeHandle('git:applyPatch', async (_e, projectId, patch, opts) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return applyPatch(resolve(expandHome(project.cwd)), patch, opts)
 })
 
 // ---------------------------------------------------------------

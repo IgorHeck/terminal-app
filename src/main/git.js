@@ -1,4 +1,4 @@
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
 import { promisify } from 'util'
 
 const execFileAsync = promisify(execFile)
@@ -196,23 +196,24 @@ export function parseNumstat(stdout) {
 export async function getState(cwd) {
   const gitInstalled = await isGitInstalled()
   if (!gitInstalled) {
-    return { isRepo: false, gitInstalled: false, root: cwd, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [] }
+    return { isRepo: false, gitInstalled: false, root: cwd, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [], branches: [] }
   }
 
   const repo = await isRepo(cwd)
   if (!repo) {
-    return { isRepo: false, gitInstalled: true, root: cwd, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [] }
+    return { isRepo: false, gitInstalled: true, root: cwd, head: 'HEAD', upstream: null, ahead: 0, behind: 0, changes: [], lastCommits: [], branches: [] }
   }
 
-  const [statusOut, logOut] = await Promise.all([
+  const [statusOut, logOut, branches] = await Promise.all([
     execGit(['status', '--porcelain=v2', '--branch'], cwd),
     execGit(['log', `--format=${LOG_FORMAT}`, '--max-count=20'], cwd).catch(() => ''),
+    getBranches(cwd).catch(() => []),
   ])
 
   const { head, upstream, ahead, behind, changes } = parseStatus(statusOut)
   const lastCommits = parseLog(logOut)
 
-  return { isRepo: true, gitInstalled: true, root: cwd, head, upstream, ahead, behind, changes, lastCommits }
+  return { isRepo: true, gitInstalled: true, root: cwd, head, upstream, ahead, behind, changes, lastCommits, branches }
 }
 
 // ---------------------------------------------------------------
@@ -258,7 +259,158 @@ export async function getBranches(cwd) {
     .filter(Boolean)
     .map((line) => {
       const [head, name, upstream, hash] = line.split('\x1f')
-      const isRemote = name.includes('/')
+      const isRemote = name.startsWith('origin/') || (name.includes('/') && !name.startsWith('refs/'))
       return { name, isCurrent: head === '*', isRemote, upstream: upstream || null, hash }
     })
+    .filter((b) => !b.name.endsWith('/HEAD'))
+}
+
+// ---------------------------------------------------------------
+// API pública — operações de escrita (Fase 8)
+// ---------------------------------------------------------------
+
+function execGitWithInput(args, cwd, input) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('git', ['--no-pager', ...args], {
+      cwd,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      windowsHide: true,
+    })
+    let stdout = ''
+    let stderr = ''
+    proc.stdout?.on('data', (d) => { stdout += d.toString() })
+    proc.stderr?.on('data', (d) => { stderr += d.toString() })
+    if (proc.stdin) {
+      proc.stdin.write(input, 'utf8')
+      proc.stdin.end()
+    }
+    proc.on('close', (code) => {
+      if (code !== 0) reject(new Error(stderr.trim() || `git exited with code ${code}`))
+      else resolve(stdout)
+    })
+    proc.on('error', reject)
+  })
+}
+
+export async function stageFiles(cwd, paths) {
+  if (!paths.length) return
+  await execGit(['add', '--', ...paths], cwd)
+}
+
+export async function unstageFiles(cwd, paths) {
+  if (!paths.length) return
+  await execGit(['restore', '--staged', '--', ...paths], cwd)
+}
+
+export async function discardFiles(cwd, trackedPaths = [], untrackedPaths = []) {
+  if (trackedPaths.length) await execGit(['restore', '--', ...trackedPaths], cwd)
+  if (untrackedPaths.length) await execGit(['clean', '-f', '--', ...untrackedPaths], cwd)
+}
+
+export async function commitChanges(cwd, message, { amend = false } = {}) {
+  const args = ['commit', '-m', message]
+  if (amend) args.push('--amend')
+  return execGit(args, cwd)
+}
+
+export async function checkoutBranch(cwd, branch) {
+  return execGit(['checkout', branch], cwd)
+}
+
+export async function createBranch(cwd, name, { from } = {}) {
+  const args = ['checkout', '-b', name]
+  if (from) args.push(from)
+  return execGit(args, cwd)
+}
+
+export async function deleteBranch(cwd, name, { force = false } = {}) {
+  return execGit(['branch', force ? '-D' : '-d', name], cwd)
+}
+
+const NETWORK_TIMEOUT_MS = 120_000
+
+export async function push(cwd, { force = false, remote = 'origin', branch, setUpstream = false } = {}) {
+  const args = ['push']
+  if (setUpstream) args.push('--set-upstream')
+  if (force) args.push('--force-with-lease')
+  if (remote) args.push(remote)
+  if (branch) args.push(branch)
+  const { stdout, stderr } = await execFileAsync('git', ['--no-pager', ...args], {
+    cwd,
+    timeout: NETWORK_TIMEOUT_MS,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    windowsHide: true,
+  })
+  return (stdout + stderr).trim()
+}
+
+export async function pull(cwd) {
+  const { stdout, stderr } = await execFileAsync('git', ['--no-pager', 'pull'], {
+    cwd,
+    timeout: NETWORK_TIMEOUT_MS,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    windowsHide: true,
+  })
+  return (stdout + stderr).trim()
+}
+
+export async function fetchRemote(cwd, { remote = 'origin' } = {}) {
+  const { stdout, stderr } = await execFileAsync('git', ['--no-pager', 'fetch', remote], {
+    cwd,
+    timeout: NETWORK_TIMEOUT_MS,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    windowsHide: true,
+  })
+  return (stdout + stderr).trim()
+}
+
+// Stash
+
+const STASH_FORMAT = '%gd\x1f%gs\x1f%ar'
+
+export async function getStashList(cwd) {
+  const out = await execGit(['stash', 'list', `--format=${STASH_FORMAT}`], cwd).catch(() => '')
+  return out
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [ref, message, relativeDate] = line.split('\x1f')
+      return { ref, message, relativeDate }
+    })
+}
+
+export async function stashPush(cwd, { message, includeUntracked = true } = {}) {
+  const args = ['stash', 'push']
+  if (includeUntracked) args.push('--include-untracked')
+  if (message) args.push('-m', message)
+  return execGit(args, cwd)
+}
+
+export async function stashPop(cwd, ref = 'stash@{0}') {
+  return execGit(['stash', 'pop', ref], cwd)
+}
+
+export async function stashDrop(cwd, ref = 'stash@{0}') {
+  return execGit(['stash', 'drop', ref], cwd)
+}
+
+// Commit detail
+
+export async function getCommitDetail(cwd, hash) {
+  const [metaOut, diffOut] = await Promise.all([
+    execGit(['show', hash, `--format=${LOG_FORMAT}`, '--no-patch'], cwd).catch(() => ''),
+    execGit(['show', hash, '--unified=3', '--format=', '--patch'], cwd).catch(() => ''),
+  ])
+  const commits = parseLog(metaOut)
+  return { info: commits[0] || null, diff: diffOut }
+}
+
+// Apply patch (hunk staging)
+
+export async function applyPatch(cwd, patch, { reverse = false, cached = true } = {}) {
+  const args = ['apply']
+  if (cached) args.push('--cached')
+  if (reverse) args.push('--reverse')
+  args.push('-')
+  return execGitWithInput(args, cwd, patch)
 }
