@@ -4,6 +4,7 @@ import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import FileTree from './components/FileTree.jsx'
 import GitPanel from './components/GitPanel.jsx'
+import DiffViewer from './components/DiffViewer.jsx'
 import EditorTabs from './components/EditorTabs.jsx'
 import Editor from './components/Editor.jsx'
 import StatusBar from './components/StatusBar.jsx'
@@ -49,7 +50,7 @@ function AppLayout() {
     closePane,
     selectTab,
   } = useTerminals()
-  const { openFilesByProject, activeFileByProject, openFile, selectFile, closeFile } = useEditor()
+  const { openFilesByProject, activeFileByProject, openFile, openDiff, selectFile, closeFile } = useEditor()
   const {
     runProcessesByProject,
     runModalOpen,
@@ -292,7 +293,10 @@ function AppLayout() {
         {showSecondaryPanel && (
           <>
             {activeView === 'git' ? (
-              <GitPanel width={explorerWidth} />
+              <GitPanel
+                width={explorerWidth}
+                onOpenDiff={(meta) => openDiff(activeProjectId, meta)}
+              />
             ) : (
               <FileTree
                 root={activeProject.cwd}
@@ -318,7 +322,11 @@ function AppLayout() {
                   onSelect={(f) => selectFile(activeProjectId, f)}
                   onClose={(f) => closeFile(activeProjectId, f)}
                 />
-                <Editor file={activeFile} project={activeProject} />
+                {activeFile?.kind === 'diff' ? (
+                  <DiffViewer file={activeFile} />
+                ) : (
+                  <Editor file={activeFile} project={activeProject} />
+                )}
               </div>
 
               <Divider axis="y" onPointerDown={onTermResize} />

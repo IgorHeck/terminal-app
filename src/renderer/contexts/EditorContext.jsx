@@ -75,9 +75,19 @@ export function EditorProvider({ children }) {
     dispatch({ type: 'FILES_RESTORED', projectId, openFiles, activeFilePath })
   }, [])
 
+  const openDiff = useCallback((projectId, { filePath, staged, displayName }) => {
+    const path = `diff:${projectId}:${staged ? 'staged' : 'unstaged'}:${filePath}`
+    const name = `${displayName} (${staged ? 'staged' : 'diff'})`
+    dispatch({
+      type: 'FILE_OPENED',
+      projectId,
+      file: { path, name, kind: 'diff', diffMeta: { projectId, filePath, staged } },
+    })
+  }, [])
+
   return (
     <EditorContext.Provider
-      value={{ ...state, dispatch, openFile, selectFile, closeFile, restoreProjectSession }}
+      value={{ ...state, dispatch, openFile, selectFile, closeFile, restoreProjectSession, openDiff }}
     >
       {children}
     </EditorContext.Provider>

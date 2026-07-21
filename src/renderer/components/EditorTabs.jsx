@@ -43,10 +43,11 @@ export default function EditorTabs({ files, activeFile, project, gitState, onSel
     <div className="h-9 flex items-stretch bg-panel-2 border-b border-border-soft overflow-x-auto flex-shrink-0">
       {files.map((f) => {
         const isActive = f.path === activeFile
-        const b = badgeFor(f.name)
+        const isDiff = f.kind === 'diff'
+        const b = isDiff ? { l: '±', c: '#e2c08d' } : badgeFor(f.name)
 
-        // Resolve git status para esta aba
-        const rel = gitState?.root ? toRelative(f.path, gitState.root) : null
+        // Resolve git status para esta aba (não aplicável a abas de diff)
+        const rel = !isDiff && gitState?.root ? toRelative(f.path, gitState.root) : null
         const gitInfo = rel ? gitTabStatus(changesMap.get(rel)) : null
 
         return (
