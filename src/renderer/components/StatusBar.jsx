@@ -1,12 +1,13 @@
 import React from 'react'
+import { useGit } from '../contexts/GitContext.jsx'
+import { useRun } from '../contexts/RunContext.jsx'
+import { useProjects } from '../contexts/ProjectsContext.jsx'
 
-// Barra de status (26px) — DESIGN.md §6 (7) e §7.
-// Itens dependentes de git/editor ainda não têm fonte de dados (fases
-// posteriores); aparecem como placeholders "—" e o shell vem do projeto.
-function Item({ children, color }) {
+function Item({ children, color, onClick }) {
   return (
     <span
-      className="h-full px-2.5 flex items-center gap-1.5 text-[11px] font-mono text-text-3"
+      onClick={onClick}
+      className={`h-full px-2.5 flex items-center gap-1 text-[11px] font-mono text-text-3 select-none${onClick ? ' cursor-pointer hover:bg-surface hover:text-text' : ''}`}
       style={color ? { color } : undefined}
     >
       {children}
@@ -14,15 +15,47 @@ function Item({ children, color }) {
   )
 }
 
-export default function StatusBar({ project }) {
-  const shell = project?.shell || 'sistema'
+export default function StatusBar({ onOpenGit }) {
+  const { activeProject, activeProjectId } = useProjects()
+  const { activeGitState } = useGit()
+  const { runProcessesByProject } = useRun()
+
+  const shell = activeProject?.shell || 'sistema'
+
+  const runProcesses = activeProjectId ? (runProcessesByProject[activeProjectId] || []) : []
+  const activePort = runProcesses.find((p) => p.status === 'running' && p.port)?.port ?? null
+
+  let branchLabel = '—'
+  let ahead = 0
+  let behind = 0
+  let hasChanges = false
+
+  if (activeProject && activeGitState) {
+    if (activeGitState.isRepo) {
+      branchLabel = activeGitState.head || 'HEAD'
+      ahead = activeGitState.ahead
+      behind = activeGitState.behind
+      hasChanges = activeGitState.changes.length > 0
+    } else if (!activeGitState.gitInstalled) {
+      branchLabel = 'git?'
+    }
+  }
 
   return (
     <div className="h-[26px] flex items-center justify-between bg-panel-2 border-t border-border-soft flex-shrink-0">
       <div className="flex items-center h-full divide-x divide-border-soft">
-        <Item color={project?.color}>⎇ {project ? 'main' : '—'}</Item>
+        <Item color={activeProject?.color} onClick={activeProject ? onOpenGit : undefined}>
+          <span>⎇</span>
+          <span>{branchLabel}</span>
+          {hasChanges && (
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />
+          )}
+          {ahead > 0 && <span className="text-green-400">↑{ahead}</span>}
+          {behind > 0 && <span className="text-yellow-400">↓{behind}</span>}
+        </Item>
         <Item>
-          dev <span className="text-text-4">:—</span>
+          dev{' '}
+          <span className="text-text-4">{activePort ? `:${activePort}` : ':—'}</span>
         </Item>
       </div>
       <div className="flex items-center h-full divide-x divide-border-soft">

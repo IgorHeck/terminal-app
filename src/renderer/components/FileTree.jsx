@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import FileBadge from './FileBadge.jsx'
 
 // Itens esmaecidos (DESIGN.md §7): dependências, builds e lockfiles.
@@ -13,8 +13,36 @@ const DIM = new Set([
   'pnpm-lock.yaml',
 ])
 
+// Converte path absoluto de um entry para path relativo ao root do git.
+// Ambos usam o separador do SO; normaliza para forward-slash para comparar
+// com os paths retornados pelo git (sempre forward-slash no porcelain v2).
+function toRelative(entryPath, root) {
+  if (!root) return null
+  const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '') + '/'
+  const normEntry = entryPath.replace(/\\/g, '/')
+  if (normEntry.startsWith(normRoot)) return normEntry.slice(normRoot.length)
+  return null
+}
+
+// Letra de status git e cor associada (alinhado ao VS Code).
+function gitStatusInfo(x, y) {
+  if (x === '?' && y === '?') return { letter: '?', color: '#858585' }
+  if (x !== '.' && x !== '?') {
+    if (x === 'A') return { letter: 'A', color: '#73c991' }
+    if (x === 'D') return { letter: 'D', color: '#f14c4c' }
+    if (x === 'R') return { letter: 'R', color: '#4ec9b0' }
+    return { letter: x, color: '#e2c08d' }
+  }
+  if (y !== '.' && y !== '?') {
+    if (y === 'M' || y === 'T') return { letter: 'M', color: '#e2c08d' }
+    if (y === 'D') return { letter: 'D', color: '#f14c4c' }
+    return { letter: y, color: '#e2c08d' }
+  }
+  return null
+}
+
 // Explorador de arquivos (~244px) — DESIGN.md §6 (4), §7.
-export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) {
+export default function FileTree({ root, activeFile, onOpenFile, gitState, width = 244 }) {
   const [childrenByPath, setChildren] = useState({})
   const [expanded, setExpanded] = useState(() => new Set())
 
@@ -28,6 +56,28 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
     setExpanded(new Set())
     if (root) load(root)
   }, [root, load])
+
+  // Mapeia path relativo → entrada de status (só para arquivos com mudanças)
+  const changesMap = useMemo(() => {
+    const map = new Map()
+    if (!gitState?.isRepo || !gitState?.changes) return map
+    for (const c of gitState.changes) {
+      map.set(c.path, c)
+    }
+    return map
+  }, [gitState])
+
+  const getGitInfo = useCallback(
+    (entryPath) => {
+      if (!gitState?.isRepo || !gitState?.root) return null
+      const rel = toRelative(entryPath, gitState.root)
+      if (!rel) return null
+      const change = changesMap.get(rel)
+      if (!change) return null
+      return gitStatusInfo(change.x, change.y)
+    },
+    [gitState, changesMap]
+  )
 
   const toggleDir = (entry) => {
     setExpanded((prev) => {
@@ -61,7 +111,7 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
               ▸
             </span>
             <span>{open ? '📂' : '📁'}</span>
-            <span className="truncate">{entry.name}</span>
+            <span className="truncate flex-1">{entry.name}</span>
           </div>
           {open && (childrenByPath[entry.path] || []).map((c) => renderNode(c, depth + 1))}
         </div>
@@ -69,6 +119,8 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
     }
 
     const isActive = activeFile === entry.path
+    const gitInfo = getGitInfo(entry.path)
+
     return (
       <div
         key={entry.path}
@@ -82,7 +134,15 @@ export default function FileTree({ root, activeFile, onOpenFile, width = 244 }) 
           <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-3/5 rounded bg-accent" />
         )}
         <FileBadge name={entry.name} />
-        <span className="truncate">{entry.name}</span>
+        <span className="truncate flex-1">{entry.name}</span>
+        {gitInfo && (
+          <span
+            className="text-[10px] font-bold flex-shrink-0 w-3 text-center"
+            style={{ color: gitInfo.color }}
+          >
+            {gitInfo.letter}
+          </span>
+        )}
       </div>
     )
   }

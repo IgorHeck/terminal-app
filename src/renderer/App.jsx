@@ -3,6 +3,7 @@ import TitleBar from './components/TitleBar.jsx'
 import ActivityRail from './components/ActivityRail.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import FileTree from './components/FileTree.jsx'
+import GitPanel from './components/GitPanel.jsx'
 import EditorTabs from './components/EditorTabs.jsx'
 import Editor from './components/Editor.jsx'
 import StatusBar from './components/StatusBar.jsx'
@@ -21,6 +22,7 @@ import { TerminalsProvider, useTerminals } from './contexts/TerminalsContext.jsx
 import { EditorProvider, useEditor } from './contexts/EditorContext.jsx'
 import { RunProvider, useRun } from './contexts/RunContext.jsx'
 import { ProjectsProvider, useProjects } from './contexts/ProjectsContext.jsx'
+import { GitProvider, useGit } from './contexts/GitContext.jsx'
 
 function AppLayout() {
   const {
@@ -58,8 +60,9 @@ function AppLayout() {
     removeRunProcess,
     openRunPort,
   } = useRun()
+  const { activeGitState } = useGit()
 
-  const [activeView, setActiveView] = useState('projects')
+  const [activeView, setActiveView] = useState('explorer')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [tweaks, setTweak] = useTweaks(sessionTweaks)
@@ -167,6 +170,19 @@ function AppLayout() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const handleSelectView = useCallback(
+    (view) => {
+      if (view === 'search') {
+        setPaletteOpen(true)
+      } else {
+        setActiveView(view)
+      }
+    },
+    []
+  )
+
+  const openGitView = useCallback(() => setActiveView('git'), [])
+
   const handleSelectTab = useCallback(
     (project, tab) => {
       dispatchProjects({ type: 'SET_ACTIVE', id: project.id })
@@ -238,14 +254,22 @@ function AppLayout() {
     setPaletteOpen(false)
   }, [])
 
+  // Mostra painel secundário apenas em modo explorer ou git
+  const showSecondaryPanel = activeProject && (activeView === 'explorer' || activeView === 'git')
+
   return (
     <div className="flex flex-col h-full">
-      <TitleBar project={activeProject} onOpenSearch={() => setPaletteOpen(true)} />
+      <TitleBar
+        project={activeProject}
+        gitState={activeGitState}
+        onOpenSearch={() => setPaletteOpen(true)}
+        onOpenGit={openGitView}
+      />
       <div className="flex flex-1 min-h-0">
         {tweaks.showRail && (
           <ActivityRail
             activeView={activeView}
-            onSelectView={setActiveView}
+            onSelectView={handleSelectView}
             onOpenSettings={() => setSettingsOpen(true)}
           />
         )}
@@ -265,14 +289,19 @@ function AppLayout() {
         />
         <Divider axis="x" onPointerDown={onSidebarResize} />
 
-        {activeProject && (
+        {showSecondaryPanel && (
           <>
-            <FileTree
-              root={activeProject.cwd}
-              activeFile={activeFilePath}
-              onOpenFile={(entry) => openFile(activeProjectId, entry)}
-              width={explorerWidth}
-            />
+            {activeView === 'git' ? (
+              <GitPanel width={explorerWidth} />
+            ) : (
+              <FileTree
+                root={activeProject.cwd}
+                activeFile={activeFilePath}
+                onOpenFile={(entry) => openFile(activeProjectId, entry)}
+                gitState={activeGitState}
+                width={explorerWidth}
+              />
+            )}
             <Divider axis="x" onPointerDown={onExplorerResize} />
           </>
         )}
@@ -285,6 +314,7 @@ function AppLayout() {
                   files={openFiles}
                   activeFile={activeFilePath}
                   project={activeProject}
+                  gitState={activeGitState}
                   onSelect={(f) => selectFile(activeProjectId, f)}
                   onClose={(f) => closeFile(activeProjectId, f)}
                 />
@@ -356,7 +386,7 @@ function AppLayout() {
           </>
         )}
       </div>
-      <StatusBar project={activeProject} />
+      <StatusBar onOpenGit={openGitView} />
 
       {!tweaks.showRail && (
         <button
@@ -414,7 +444,9 @@ export default function App() {
       <EditorProvider>
         <RunProvider>
           <ProjectsProvider>
-            <AppLayout />
+            <GitProvider>
+              <AppLayout />
+            </GitProvider>
           </ProjectsProvider>
         </RunProvider>
       </EditorProvider>
