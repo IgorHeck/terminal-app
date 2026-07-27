@@ -22,12 +22,20 @@ export const RUN_LAYOUTS = [
   { id: 'tabs', label: 'abas' },
 ]
 
+export const AUTO_FETCH_OPTIONS = [
+  { id: 0, label: 'desligado' },
+  { id: 1, label: '1 min' },
+  { id: 5, label: '5 min' },
+  { id: 10, label: '10 min' },
+]
+
 const DEFAULTS = {
   accent: 'indigo',
   density: 'roomy',
   glow: false,
   showRail: true,
   runLayout: 'stacked',
+  autoFetchInterval: 0, // minutos; 0 = desligado
 }
 
 // sessionTweaks: valores vindos da sessão carregada do electron-store.

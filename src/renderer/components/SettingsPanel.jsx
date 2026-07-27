@@ -1,5 +1,5 @@
 import React from 'react'
-import { ACCENTS, DENSITIES, RUN_LAYOUTS } from '../hooks/useTweaks.js'
+import { ACCENTS, DENSITIES, RUN_LAYOUTS, AUTO_FETCH_OPTIONS } from '../hooks/useTweaks.js'
 
 function Label({ children }) {
   return <div className="text-[11px] text-text-3 uppercase tracking-wide mb-2">{children}</div>
@@ -90,6 +90,15 @@ export default function SettingsPanel({ tweaks, onChange, onClose }) {
         <div className="flex items-center justify-between py-1.5">
           <span className="text-[12px] text-text-2">Barra de atividades</span>
           <Toggle on={tweaks.showRail} onClick={() => onChange({ showRail: !tweaks.showRail })} />
+        </div>
+
+        <Label>Auto-fetch git</Label>
+        <div className="mb-2">
+          <Segmented
+            options={AUTO_FETCH_OPTIONS.map((o) => ({ id: o.id, label: o.label }))}
+            value={tweaks.autoFetchInterval ?? 0}
+            onChange={(v) => onChange({ autoFetchInterval: v })}
+          />
         </div>
       </div>
     </div>

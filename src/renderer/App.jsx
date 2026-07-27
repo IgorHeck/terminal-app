@@ -172,6 +172,16 @@ function AppLayout() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // 9.5 — Auto-fetch git: roda git fetch no projeto ativo a cada N minutos
+  useEffect(() => {
+    const interval = tweaks.autoFetchInterval || 0
+    if (!interval || !activeProjectId) return
+    const timer = setInterval(() => {
+      window.api.git.fetch(activeProjectId).catch(() => {})
+    }, interval * 60 * 1000)
+    return () => clearInterval(timer)
+  }, [tweaks.autoFetchInterval, activeProjectId])
+
   const handleSelectView = useCallback(
     (view) => {
       if (view === 'search') {
