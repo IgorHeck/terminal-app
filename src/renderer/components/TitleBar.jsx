@@ -1,9 +1,84 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { useGitHub } from '../contexts/GitHubContext.jsx'
+
+// Dropdown de notificações GitHub
+function NotifDropdown({ notifications, onMarkRead, onMarkAll, onClose }) {
+  const dropRef = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropRef.current && !dropRef.current.contains(e.target)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  function typeIcon(type) {
+    if (type === 'PullRequest') return '⎇'
+    if (type === 'Issue') return '◎'
+    if (type === 'Release') return '🏷'
+    return '●'
+  }
+
+  return (
+    <div
+      ref={dropRef}
+      className="absolute top-10 right-0 z-50 w-80 bg-panel border border-border rounded-token shadow-2xl overflow-hidden"
+      style={{ WebkitAppRegion: 'no-drag' }}
+    >
+      <div className="flex items-center px-3 py-2 border-b border-border-soft">
+        <span className="text-[12px] font-semibold text-text flex-1">Notificações</span>
+        {notifications.length > 0 && (
+          <button
+            type="button"
+            onClick={onMarkAll}
+            className="text-[10px] text-text-4 hover:text-text-2"
+          >
+            marcar todas lidas
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-80 overflow-auto">
+        {notifications.length === 0 ? (
+          <div className="px-3 py-4 text-[12px] text-text-4 italic font-mono text-center">
+            Sem notificações
+          </div>
+        ) : (
+          notifications.slice(0, 20).map((n) => (
+            <div
+              key={n.id}
+              className="group flex items-start gap-2 px-3 py-2 hover:bg-surface border-b border-border-soft last:border-0"
+            >
+              <span className="text-[12px] text-text-3 flex-shrink-0 mt-0.5">
+                {typeIcon(n.type)}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] text-text-2 truncate leading-tight">{n.title}</div>
+                <div className="text-[10px] text-text-4 font-mono mt-0.5 truncate">{n.repo}</div>
+              </div>
+              <button
+                type="button"
+                title="Marcar como lida"
+                onClick={() => onMarkRead(n.id)}
+                className="opacity-0 group-hover:opacity-100 text-[11px] text-text-4 hover:text-accent flex-shrink-0 mt-0.5 transition-opacity"
+              >
+                ✓
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
 
 // Barra de título (44px) — DESIGN.md §6 (1).
 // frame:false na BrowserWindow; arraste via -webkit-app-region.
 export default function TitleBar({ project, gitState, onOpenSearch, onOpenGit }) {
   const [maximized, setMaximized] = useState(false)
+  const { unreadCount, notifications, markRead, markAllRead, authState } = useGitHub()
+  const [notifOpen, setNotifOpen] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -82,13 +157,34 @@ export default function TitleBar({ project, gitState, onOpenSearch, onOpenGit })
           )}
         </button>
 
-        <button
-          type="button"
-          title="Notificações"
-          className="w-7 h-7 rounded-btn flex items-center justify-center text-text-3 hover:text-text hover:bg-surface"
-        >
-          ◔
-        </button>
+        {/* Botão de notificações GitHub */}
+        <div className="relative">
+          <button
+            type="button"
+            title={authState?.authenticated ? `Notificações GitHub${unreadCount > 0 ? ` (${unreadCount})` : ''}` : 'Notificações GitHub (não autenticado)'}
+            onClick={() => authState?.authenticated && setNotifOpen((v) => !v)}
+            className={`w-7 h-7 rounded-btn flex items-center justify-center transition-colors ${
+              authState?.authenticated
+                ? 'text-text-3 hover:text-text hover:bg-surface cursor-pointer'
+                : 'text-text-4 cursor-default'
+            }`}
+          >
+            ◔
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 rounded-full bg-accent flex items-center justify-center text-[9px] font-bold text-black px-0.5">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {notifOpen && (
+            <NotifDropdown
+              notifications={notifications}
+              onMarkRead={(id) => { markRead(id) }}
+              onMarkAll={() => { markAllRead(); setNotifOpen(false) }}
+              onClose={() => setNotifOpen(false)}
+            />
+          )}
+        </div>
         <div className="w-px h-5 bg-border-soft mx-1" />
         <button
           type="button"

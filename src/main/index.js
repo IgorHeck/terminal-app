@@ -36,6 +36,22 @@ import {
   getCommitDetail,
   applyPatch,
 } from './git.js'
+import {
+  getAuthState,
+  signOut,
+  startDeviceFlow,
+  parseRemoteOwnerRepo,
+  getPRs,
+  getPRChecks,
+  createPR,
+  fetchPRBranch,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  getDeviceClientId,
+  setDeviceClientId,
+  invalidateAuthCache,
+} from './github.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -437,6 +453,78 @@ function applyCsp() {
     })
   })
 }
+
+// ---------------------------------------------------------------
+// IPC — GitHub (Fase 9)
+// ---------------------------------------------------------------
+
+safeHandle('github:authState', async () => {
+  return getAuthState()
+})
+
+safeHandle('github:signIn', async (_e, method) => {
+  invalidateAuthCache()
+  if (method === 'gh') {
+    return getAuthState()
+  }
+  // Device Flow
+  const clientId = getDeviceClientId()
+  if (!clientId) throw new Error('Nenhum client ID configurado. Configure em Ajustes → GitHub Client ID.')
+  return startDeviceFlow(clientId, (payload) => {
+    sendToRenderer('github:deviceCode', payload)
+  })
+})
+
+safeHandle('github:signOut', async () => {
+  await signOut()
+  sendToRenderer('github:authChanged', { authenticated: false, method: null, user: null })
+})
+
+safeHandle('github:repoInfo', async (_e, projectId) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return parseRemoteOwnerRepo(resolve(expandHome(project.cwd)))
+})
+
+safeHandle('github:prs', async (_e, owner, repo) => {
+  return getPRs(owner, repo)
+})
+
+safeHandle('github:prChecks', async (_e, owner, repo, sha) => {
+  return getPRChecks(owner, repo, sha)
+})
+
+safeHandle('github:createPr', async (_e, owner, repo, data) => {
+  return createPR(owner, repo, data)
+})
+
+safeHandle('github:checkoutPr', async (_e, projectId, prNumber, headBranch) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  const cwd = resolve(expandHome(project.cwd))
+  await fetchPRBranch(cwd, prNumber, headBranch)
+  await checkoutBranch(cwd, headBranch)
+})
+
+safeHandle('github:notifications', async () => {
+  return getNotifications()
+})
+
+safeHandle('github:markRead', async (_e, id) => {
+  return markNotificationRead(id)
+})
+
+safeHandle('github:markAllRead', async () => {
+  return markAllNotificationsRead()
+})
+
+safeHandle('github:getClientId', async () => {
+  return getDeviceClientId()
+})
+
+safeHandle('github:setClientId', async (_e, id) => {
+  setDeviceClientId(id)
+})
 
 // ---------------------------------------------------------------
 // Ciclo de vida do app

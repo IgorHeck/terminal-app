@@ -24,6 +24,7 @@ import { EditorProvider, useEditor } from './contexts/EditorContext.jsx'
 import { RunProvider, useRun } from './contexts/RunContext.jsx'
 import { ProjectsProvider, useProjects } from './contexts/ProjectsContext.jsx'
 import { GitProvider, useGit } from './contexts/GitContext.jsx'
+import { GitHubProvider } from './contexts/GitHubContext.jsx'
 
 function AppLayout() {
   const {
@@ -170,6 +171,16 @@ function AppLayout() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // 9.5 — Auto-fetch git: roda git fetch no projeto ativo a cada N minutos
+  useEffect(() => {
+    const interval = tweaks.autoFetchInterval || 0
+    if (!interval || !activeProjectId) return
+    const timer = setInterval(() => {
+      window.api.git.fetch(activeProjectId).catch(() => {})
+    }, interval * 60 * 1000)
+    return () => clearInterval(timer)
+  }, [tweaks.autoFetchInterval, activeProjectId])
 
   const handleSelectView = useCallback(
     (view) => {
@@ -453,7 +464,9 @@ export default function App() {
         <RunProvider>
           <ProjectsProvider>
             <GitProvider>
-              <AppLayout />
+              <GitHubProvider>
+                <AppLayout />
+              </GitHubProvider>
             </GitProvider>
           </ProjectsProvider>
         </RunProvider>
