@@ -1,14 +1,18 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useGit } from '../contexts/GitContext.jsx'
 import { useProjects } from '../contexts/ProjectsContext.jsx'
+import { useGitHub } from '../contexts/GitHubContext.jsx'
+import GitHubPanel from './GitHubPanel.jsx'
 
 // ============================================================
-// GitPanel — painel git completo (Fase 8).
+// GitPanel — painel git completo (Fases 8–9).
 // 8.1: stage/unstage/discard por arquivo
 // 8.2: caixa de commit + amend
 // 8.4: listar/trocar/criar/deletar branches
 // 8.5: push/pull/fetch com estado de loading e erro
 // 8.6: stash, log de commits com detalhe
+// 9.2: aba GitHub com PRs e checks
+// 9.3: criar PR e checkout de PR
 // ============================================================
 
 // Cores e letras de status (alinhado ao VS Code)
@@ -823,18 +827,51 @@ function LogSection({ commits, projectId }) {
   )
 }
 
-// Header do painel
-function Header({ branch, upstream, ahead, behind }) {
+// Header do painel com abas Git | GitHub
+function Header({ branch, upstream, ahead, behind, activeTab, onTabChange }) {
+  const { unreadCount } = useGitHub()
   return (
-    <div className="h-11 flex items-center px-3 gap-2 border-b border-border-soft flex-shrink-0">
-      <span className="text-[11px] font-semibold text-text-3 uppercase tracking-wider">Git</span>
-      <span className="text-[12px] font-mono text-accent truncate flex-1">{branch}</span>
-      {upstream && (ahead > 0 || behind > 0) && (
-        <span className="text-[11px] font-mono flex items-center gap-1 flex-shrink-0">
-          {ahead > 0 && <span className="text-green-400">↑{ahead}</span>}
-          {behind > 0 && <span className="text-yellow-400">↓{behind}</span>}
-        </span>
-      )}
+    <div className="flex-shrink-0 border-b border-border-soft">
+      {/* Linha de branch */}
+      <div className="h-8 flex items-center px-3 gap-2">
+        <span className="text-[12px] font-mono text-accent truncate flex-1">{branch || '—'}</span>
+        {upstream && (ahead > 0 || behind > 0) && (
+          <span className="text-[11px] font-mono flex items-center gap-1 flex-shrink-0">
+            {ahead > 0 && <span className="text-green-400">↑{ahead}</span>}
+            {behind > 0 && <span className="text-yellow-400">↓{behind}</span>}
+          </span>
+        )}
+      </div>
+      {/* Abas */}
+      <div className="flex border-t border-border-soft">
+        <button
+          type="button"
+          onClick={() => onTabChange('git')}
+          className={`flex-1 h-7 text-[11px] font-medium transition-colors ${
+            activeTab === 'git'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-text-3 hover:text-text-2'
+          }`}
+        >
+          Git
+        </button>
+        <button
+          type="button"
+          onClick={() => onTabChange('github')}
+          className={`flex-1 h-7 text-[11px] font-medium transition-colors relative ${
+            activeTab === 'github'
+              ? 'text-accent border-b-2 border-accent'
+              : 'text-text-3 hover:text-text-2'
+          }`}
+        >
+          GitHub
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 right-2 min-w-[14px] h-3.5 rounded-full bg-accent flex items-center justify-center text-[9px] font-bold text-black px-0.5">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   )
 }
@@ -858,6 +895,7 @@ function EmptyState({ message, width }) {
 export default function GitPanel({ width = 244, onOpenDiff }) {
   const { activeGitState, fetchGitState } = useGit()
   const { activeProject, activeProjectId } = useProjects()
+  const [activeTab, setActiveTab] = useState('git')
 
   const refresh = useCallback(() => {
     if (activeProjectId) fetchGitState(activeProjectId)
@@ -905,43 +943,54 @@ export default function GitPanel({ width = 244, onOpenDiff }) {
       style={{ width }}
       className="flex-shrink-0 bg-panel border-r border-border-soft flex flex-col h-full"
     >
-      <Header branch={head} upstream={upstream} ahead={ahead} behind={behind} />
+      <Header
+        branch={head}
+        upstream={upstream}
+        ahead={ahead}
+        behind={behind}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-      <div className="flex-1 overflow-auto">
-        {/* Push / Pull / Fetch */}
-        <NetworkBar projectId={activeProjectId} onDone={refresh} />
+      {activeTab === 'github' ? (
+        <GitHubPanel activeGitState={activeGitState} onRefreshGit={refresh} />
+      ) : (
+        <div className="flex-1 overflow-auto">
+          {/* Push / Pull / Fetch */}
+          <NetworkBar projectId={activeProjectId} onDone={refresh} />
 
-        {/* Commit box */}
-        <CommitBox
-          projectId={activeProjectId}
-          stagedCount={staged.length}
-          onCommitted={refresh}
-        />
+          {/* Commit box */}
+          <CommitBox
+            projectId={activeProjectId}
+            stagedCount={staged.length}
+            onCommitted={refresh}
+          />
 
-        {/* Alterações */}
-        <ChangesSection
-          staged={staged}
-          unstaged={unstaged}
-          untracked={untracked}
-          projectId={activeProjectId}
-          onAction={handleAction}
-          onOpenDiff={onOpenDiff}
-        />
+          {/* Alterações */}
+          <ChangesSection
+            staged={staged}
+            unstaged={unstaged}
+            untracked={untracked}
+            projectId={activeProjectId}
+            onAction={handleAction}
+            onOpenDiff={onOpenDiff}
+          />
 
-        {/* Branches */}
-        <BranchSection
-          branches={branches}
-          projectId={activeProjectId}
-          currentBranch={head}
-          onDone={refresh}
-        />
+          {/* Branches */}
+          <BranchSection
+            branches={branches}
+            projectId={activeProjectId}
+            currentBranch={head}
+            onDone={refresh}
+          />
 
-        {/* Stash */}
-        <StashSection projectId={activeProjectId} onDone={refresh} />
+          {/* Stash */}
+          <StashSection projectId={activeProjectId} onDone={refresh} />
 
-        {/* Log de commits */}
-        <LogSection commits={lastCommits} projectId={activeProjectId} />
-      </div>
+          {/* Log de commits */}
+          <LogSection commits={lastCommits} projectId={activeProjectId} />
+        </div>
+      )}
     </div>
   )
 }

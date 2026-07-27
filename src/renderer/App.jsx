@@ -24,6 +24,7 @@ import { EditorProvider, useEditor } from './contexts/EditorContext.jsx'
 import { RunProvider, useRun } from './contexts/RunContext.jsx'
 import { ProjectsProvider, useProjects } from './contexts/ProjectsContext.jsx'
 import { GitProvider, useGit } from './contexts/GitContext.jsx'
+import { GitHubProvider } from './contexts/GitHubContext.jsx'
 
 function AppLayout() {
   const {
@@ -453,7 +454,9 @@ export default function App() {
         <RunProvider>
           <ProjectsProvider>
             <GitProvider>
-              <AppLayout />
+              <GitHubProvider>
+                <AppLayout />
+              </GitHubProvider>
             </GitProvider>
           </ProjectsProvider>
         </RunProvider>
