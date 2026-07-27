@@ -81,6 +81,32 @@ const api = {
     applyPatch: (projectId, patch, opts) =>
       ipcRenderer.invoke('git:applyPatch', projectId, patch, opts),
   },
+  github: {
+    getAuthState: () => ipcRenderer.invoke('github:authState'),
+    signIn: (method) => ipcRenderer.invoke('github:signIn', method),
+    signOut: () => ipcRenderer.invoke('github:signOut'),
+    repoInfo: (projectId) => ipcRenderer.invoke('github:repoInfo', projectId),
+    prs: (owner, repo) => ipcRenderer.invoke('github:prs', owner, repo),
+    prChecks: (owner, repo, sha) => ipcRenderer.invoke('github:prChecks', owner, repo, sha),
+    createPr: (owner, repo, data) => ipcRenderer.invoke('github:createPr', owner, repo, data),
+    checkoutPr: (projectId, prNumber, headBranch) =>
+      ipcRenderer.invoke('github:checkoutPr', projectId, prNumber, headBranch),
+    notifications: () => ipcRenderer.invoke('github:notifications'),
+    markRead: (id) => ipcRenderer.invoke('github:markRead', id),
+    markAllRead: () => ipcRenderer.invoke('github:markAllRead'),
+    getClientId: () => ipcRenderer.invoke('github:getClientId'),
+    setClientId: (id) => ipcRenderer.invoke('github:setClientId', id),
+    onDeviceCode: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('github:deviceCode', handler)
+      return () => ipcRenderer.removeListener('github:deviceCode', handler)
+    },
+    onAuthChanged: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('github:authChanged', handler)
+      return () => ipcRenderer.removeListener('github:authChanged', handler)
+    },
+  },
   app: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   },
