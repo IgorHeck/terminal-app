@@ -285,6 +285,7 @@ export default function Editor({ file, project }) {
       // Limpa cursor ao desmontar
       setCursor({ line: 0, col: 0, language: '' })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file?.path, project?.id, markDirty, markClean, handleSave])
 
   // --- Watcher de mudança externa (10.3) ---

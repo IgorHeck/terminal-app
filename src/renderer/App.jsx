@@ -53,7 +53,6 @@ function AppLayout() {
   const {
     openFilesByProject,
     activeFileByProject,
-    dirtyByProject,
     openFile,
     openDiff,
     selectFile,
