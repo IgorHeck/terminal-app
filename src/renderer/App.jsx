@@ -270,10 +270,20 @@ function AppLayout() {
     selectFile,
   ])
 
-  const onPaletteSelect = useCallback((item) => {
-    item.run?.()
-    setPaletteOpen(false)
-  }, [])
+  const onPaletteSelect = useCallback(
+    (item) => {
+      if (item.fsPath && activeProjectId) {
+        // Arquivo do FS: abre no editor
+        const name = item.label
+        openFile(activeProjectId, { path: item.fsPath, name, isDir: false })
+        setActiveView('explorer')
+      } else {
+        item.run?.()
+      }
+      setPaletteOpen(false)
+    },
+    [activeProjectId, openFile]
+  )
 
   // Mostra painel secundário apenas em modo explorer ou git
   const showSecondaryPanel = activeProject && (activeView === 'explorer' || activeView === 'git')
@@ -434,6 +444,7 @@ function AppLayout() {
       {paletteOpen && (
         <CommandPalette
           items={paletteItems}
+          activeProjectId={activeProjectId}
           onClose={() => setPaletteOpen(false)}
           onSelect={onPaletteSelect}
         />
