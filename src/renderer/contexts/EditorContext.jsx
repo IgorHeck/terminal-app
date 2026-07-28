@@ -2,8 +2,10 @@ import React, { createContext, useContext, useReducer, useCallback } from 'react
 
 const EditorContext = createContext(null)
 
+// dirtyByProject: { [projectId]: Set<path> }
+// Não é serializado — o estado de "sujo" é apenas em memória.
 function reducer(state, action) {
-  const { openFilesByProject, activeFileByProject } = state
+  const { openFilesByProject, activeFileByProject, dirtyByProject } = state
   switch (action.type) {
     case 'FILE_OPENED': {
       const { projectId, file } = action
@@ -29,10 +31,14 @@ function reducer(state, action) {
       const nextActive = wasActive
         ? (remaining[remaining.length - 1]?.path ?? null)
         : activeFileByProject[projectId]
+      // limpa dirty ao fechar
+      const newDirty = new Set(dirtyByProject[projectId] || [])
+      newDirty.delete(path)
       return {
         ...state,
         openFilesByProject: { ...openFilesByProject, [projectId]: remaining },
         activeFileByProject: { ...activeFileByProject, [projectId]: nextActive },
+        dirtyByProject: { ...dirtyByProject, [projectId]: newDirty },
       }
     }
     case 'FILES_RESTORED': {
@@ -46,14 +52,31 @@ function reducer(state, action) {
     case 'PROJECT_REMOVED': {
       const { [action.projectId]: _, ...restOpen } = openFilesByProject
       const { [action.projectId]: __, ...restActive } = activeFileByProject
-      return { ...state, openFilesByProject: restOpen, activeFileByProject: restActive }
+      const { [action.projectId]: ___, ...restDirty } = dirtyByProject
+      return { ...state, openFilesByProject: restOpen, activeFileByProject: restActive, dirtyByProject: restDirty }
+    }
+    case 'FILE_DIRTY': {
+      const { projectId, path } = action
+      const set = new Set(dirtyByProject[projectId] || [])
+      set.add(path)
+      return { ...state, dirtyByProject: { ...dirtyByProject, [projectId]: set } }
+    }
+    case 'FILE_CLEAN': {
+      const { projectId, path } = action
+      const set = new Set(dirtyByProject[projectId] || [])
+      set.delete(path)
+      return { ...state, dirtyByProject: { ...dirtyByProject, [projectId]: set } }
     }
     default:
       return state
   }
 }
 
-const initialState = { openFilesByProject: {}, activeFileByProject: {} }
+const initialState = {
+  openFilesByProject: {},
+  activeFileByProject: {},
+  dirtyByProject: {},
+}
 
 export function EditorProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
@@ -85,9 +108,35 @@ export function EditorProvider({ children }) {
     })
   }, [])
 
+  const markDirty = useCallback((projectId, path) => {
+    dispatch({ type: 'FILE_DIRTY', projectId, path })
+  }, [])
+
+  const markClean = useCallback((projectId, path) => {
+    dispatch({ type: 'FILE_CLEAN', projectId, path })
+  }, [])
+
+  const isFileDirty = useCallback(
+    (projectId, path) => {
+      return state.dirtyByProject[projectId]?.has(path) ?? false
+    },
+    [state.dirtyByProject]
+  )
+
   return (
     <EditorContext.Provider
-      value={{ ...state, dispatch, openFile, selectFile, closeFile, restoreProjectSession, openDiff }}
+      value={{
+        ...state,
+        dispatch,
+        openFile,
+        selectFile,
+        closeFile,
+        restoreProjectSession,
+        openDiff,
+        markDirty,
+        markClean,
+        isFileDirty,
+      }}
     >
       {children}
     </EditorContext.Provider>

@@ -51,7 +51,15 @@ function AppLayout() {
     closePane,
     selectTab,
   } = useTerminals()
-  const { openFilesByProject, activeFileByProject, openFile, openDiff, selectFile, closeFile } = useEditor()
+  const {
+    openFilesByProject,
+    activeFileByProject,
+    openFile,
+    openDiff,
+    selectFile,
+    closeFile,
+    isFileDirty,
+  } = useEditor()
   const {
     runProcessesByProject,
     runModalOpen,
@@ -195,6 +203,17 @@ function AppLayout() {
 
   const openGitView = useCallback(() => setActiveView('git'), [])
 
+  // Fecha arquivo somente após confirmação se houver edições não salvas
+  const handleCloseFile = useCallback(
+    (file) => {
+      if (isFileDirty(activeProjectId, file.path)) {
+        if (!window.confirm(`"${file.name}" tem alterações não salvas. Fechar mesmo assim?`)) return
+      }
+      closeFile(activeProjectId, file)
+    },
+    [activeProjectId, isFileDirty, closeFile]
+  )
+
   const handleSelectTab = useCallback(
     (project, tab) => {
       dispatchProjects({ type: 'SET_ACTIVE', id: project.id })
@@ -261,10 +280,20 @@ function AppLayout() {
     selectFile,
   ])
 
-  const onPaletteSelect = useCallback((item) => {
-    item.run?.()
-    setPaletteOpen(false)
-  }, [])
+  const onPaletteSelect = useCallback(
+    (item) => {
+      if (item.fsPath && activeProjectId) {
+        // Arquivo do FS: abre no editor
+        const name = item.label
+        openFile(activeProjectId, { path: item.fsPath, name, isDir: false })
+        setActiveView('explorer')
+      } else {
+        item.run?.()
+      }
+      setPaletteOpen(false)
+    },
+    [activeProjectId, openFile]
+  )
 
   // Mostra painel secundário apenas em modo explorer ou git
   const showSecondaryPanel = activeProject && (activeView === 'explorer' || activeView === 'git')
@@ -331,7 +360,7 @@ function AppLayout() {
                   project={activeProject}
                   gitState={activeGitState}
                   onSelect={(f) => selectFile(activeProjectId, f)}
-                  onClose={(f) => closeFile(activeProjectId, f)}
+                  onClose={handleCloseFile}
                 />
                 {activeFile?.kind === 'diff' ? (
                   <DiffViewer file={activeFile} />
@@ -425,6 +454,7 @@ function AppLayout() {
       {paletteOpen && (
         <CommandPalette
           items={paletteItems}
+          activeProjectId={activeProjectId}
           onClose={() => setPaletteOpen(false)}
           onSelect={onPaletteSelect}
         />

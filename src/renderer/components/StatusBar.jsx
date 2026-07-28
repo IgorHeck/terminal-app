@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useGit } from '../contexts/GitContext.jsx'
 import { useRun } from '../contexts/RunContext.jsx'
 import { useProjects } from '../contexts/ProjectsContext.jsx'
+import { subscribeCursor, getCursor } from '../cursorBroadcast.js'
 
 function Item({ children, color, onClick }) {
   return (
@@ -19,6 +20,12 @@ export default function StatusBar({ onOpenGit }) {
   const { activeProject, activeProjectId } = useProjects()
   const { activeGitState } = useGit()
   const { runProcessesByProject } = useRun()
+  const [cursor, setCursorState] = useState(() => getCursor())
+
+  // Assina cursor de alta frequência sem provocar re-render na árvore inteira
+  useEffect(() => {
+    return subscribeCursor((c) => setCursorState(c))
+  }, [])
 
   const shell = activeProject?.shell || 'sistema'
 
@@ -41,15 +48,15 @@ export default function StatusBar({ onOpenGit }) {
     }
   }
 
+  const showCursor = cursor.line > 0
+
   return (
     <div className="h-[26px] flex items-center justify-between bg-panel-2 border-t border-border-soft flex-shrink-0">
       <div className="flex items-center h-full divide-x divide-border-soft">
         <Item color={activeProject?.color} onClick={activeProject ? onOpenGit : undefined}>
           <span>⎇</span>
           <span>{branchLabel}</span>
-          {hasChanges && (
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />
-          )}
+          {hasChanges && <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />}
           {ahead > 0 && <span className="text-green-400">↑{ahead}</span>}
           {behind > 0 && <span className="text-yellow-400">↓{behind}</span>}
         </Item>
@@ -59,9 +66,12 @@ export default function StatusBar({ onOpenGit }) {
         </Item>
       </div>
       <div className="flex items-center h-full divide-x divide-border-soft">
-        <Item>Ln —, Col —</Item>
+        <Item>
+          {showCursor ? `Ln ${cursor.line}, Col ${cursor.col}` : 'Ln —, Col —'}
+        </Item>
         <Item>Spaces: 2</Item>
         <Item>UTF-8</Item>
+        {cursor.language && <Item>{cursor.language}</Item>}
         <Item>{shell}</Item>
       </div>
     </div>

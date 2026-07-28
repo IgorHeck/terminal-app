@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { badgeFor } from './FileBadge.jsx'
+import { useEditor } from '../contexts/EditorContext.jsx'
 
-// Converte path absoluto para relativo ao root do git (forward-slash).
 function toRelative(filePath, root) {
   if (!root) return null
   const normRoot = root.replace(/\\/g, '/').replace(/\/$/, '') + '/'
@@ -10,7 +10,6 @@ function toRelative(filePath, root) {
   return null
 }
 
-// Letra + cor de status git para uma aba (prioriza staged sobre unstaged).
 function gitTabStatus(change) {
   if (!change) return null
   const { x, y } = change
@@ -27,9 +26,18 @@ function gitTabStatus(change) {
   return null
 }
 
-// Abas do editor (estilo VS Code) — DESIGN.md §7.
-// Aba ativa: fundo do editor + filete de 2px na cor do projeto no topo.
-export default function EditorTabs({ files, activeFile, project, gitState, onSelect, onClose }) {
+// Abas do editor — mostra ● para arquivos com edições não salvas.
+export default function EditorTabs({
+  files,
+  activeFile,
+  project,
+  gitState,
+  onSelect,
+  onClose,
+}) {
+  const { dirtyByProject } = useEditor()
+  const dirtySet = dirtyByProject[project?.id] || new Set()
+
   const changesMap = useMemo(() => {
     const map = new Map()
     if (!gitState?.isRepo || !gitState?.changes) return map
@@ -44,9 +52,9 @@ export default function EditorTabs({ files, activeFile, project, gitState, onSel
       {files.map((f) => {
         const isActive = f.path === activeFile
         const isDiff = f.kind === 'diff'
+        const isDirty = !isDiff && dirtySet.has(f.path)
         const b = isDiff ? { l: '±', c: '#e2c08d' } : badgeFor(f.name)
 
-        // Resolve git status para esta aba (não aplicável a abas de diff)
         const rel = !isDiff && gitState?.root ? toRelative(f.path, gitState.root) : null
         const gitInfo = rel ? gitTabStatus(changesMap.get(rel)) : null
 
@@ -66,7 +74,11 @@ export default function EditorTabs({ files, activeFile, project, gitState, onSel
               {b.l}
             </span>
             <span className="text-[12px] font-mono whitespace-nowrap">{f.name}</span>
-            {gitInfo && (
+            {/* Indicador de modificado */}
+            {isDirty && (
+              <span className="text-[11px] leading-none text-yellow-400 flex-shrink-0">●</span>
+            )}
+            {gitInfo && !isDirty && (
               <span
                 className="text-[10px] font-bold leading-none flex-shrink-0"
                 style={{ color: gitInfo.color }}
@@ -79,7 +91,7 @@ export default function EditorTabs({ files, activeFile, project, gitState, onSel
                 e.stopPropagation()
                 onClose(f)
               }}
-              title="Fechar"
+              title={isDirty ? 'Arquivo não salvo — fechar mesmo assim?' : 'Fechar'}
               className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi opacity-0 group-hover:opacity-100 text-xs"
             >
               ×

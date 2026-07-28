@@ -37,6 +37,19 @@ const api = {
   fs: {
     readDir: (path) => ipcRenderer.invoke('fs:readDir', path),
     readFile: (path) => ipcRenderer.invoke('fs:readFile', path),
+    writeFile: (path, content) => ipcRenderer.invoke('fs:writeFile', path, content),
+    mkdir: (path) => ipcRenderer.invoke('fs:mkdir', path),
+    rename: (oldPath, newPath) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
+    delete: (path) => ipcRenderer.invoke('fs:delete', path),
+    showItemInFolder: (path) => ipcRenderer.invoke('shell:showItemInFolder', path),
+    watch: (path) => ipcRenderer.invoke('fs:watch', path),
+    unwatch: (path) => ipcRenderer.invoke('fs:unwatch', path),
+    onFileChanged: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('fs:fileChanged', handler)
+      return () => ipcRenderer.removeListener('fs:fileChanged', handler)
+    },
+    searchFiles: (projectId, query) => ipcRenderer.invoke('fs:searchFiles', projectId, query),
   },
   session: {
     load: () => ipcRenderer.invoke('session:load'),
