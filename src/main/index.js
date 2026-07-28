@@ -181,6 +181,88 @@ safeHandle('fs:delete', async (_e, filePath) => {
   await rm(abs, { recursive: true, force: true })
 })
 
+// ---------------------------------------------------------------
+// IPC — Watcher de arquivo individual (10.3)
+// ---------------------------------------------------------------
+// Rastreia watchers por path absoluto com contagem de referências,
+// pois múltiplas abas podem observar o mesmo arquivo.
+const fileWatchers = new Map() // path → { watcher, count }
+const fileWatchDebounce = new Map() // path → timer
+
+safeHandle('fs:watch', (_e, filePath) => {
+  const abs = resolveInScope(filePath)
+  if (fileWatchers.has(abs)) {
+    fileWatchers.get(abs).count++
+    return
+  }
+  try {
+    const watcher = watch(abs, () => {
+      if (fileWatchDebounce.has(abs)) clearTimeout(fileWatchDebounce.get(abs))
+      fileWatchDebounce.set(
+        abs,
+        setTimeout(() => {
+          fileWatchDebounce.delete(abs)
+          sendToRenderer('fs:fileChanged', { path: abs })
+        }, 200)
+      )
+    })
+    watcher.on('error', () => {
+      fileWatchers.delete(abs)
+    })
+    fileWatchers.set(abs, { watcher, count: 1 })
+  } catch {
+    // fs.watch indisponível para este path — ignorar
+  }
+})
+
+safeHandle('fs:unwatch', (_e, filePath) => {
+  // resolveInScope pode lançar se o arquivo foi deletado — usa resolve direto
+  const abs = resolve(expandHome(filePath))
+  const entry = fileWatchers.get(abs)
+  if (!entry) return
+  entry.count--
+  if (entry.count <= 0) {
+    entry.watcher.close()
+    fileWatchers.delete(abs)
+    if (fileWatchDebounce.has(abs)) {
+      clearTimeout(fileWatchDebounce.get(abs))
+      fileWatchDebounce.delete(abs)
+    }
+  }
+})
+
+// Busca recursiva de arquivos por nome no projeto (10.6)
+const IGNORE_DIRS = new Set(['node_modules', '.git', 'out', 'dist', 'build', '.next', '__pycache__'])
+
+async function searchFilesRecursive(dir, query, results, limit = 200) {
+  if (results.length >= limit) return
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const e of entries) {
+    if (results.length >= limit) break
+    if (e.isDirectory()) {
+      if (!IGNORE_DIRS.has(e.name)) await searchFilesRecursive(join(dir, e.name), query, results, limit)
+    } else {
+      if (!query || e.name.toLowerCase().includes(query.toLowerCase())) {
+        results.push(join(dir, e.name))
+      }
+    }
+  }
+}
+
+safeHandle('fs:searchFiles', async (_e, projectId, query) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  const cwd = resolve(expandHome(project.cwd))
+  const results = []
+  await searchFilesRecursive(cwd, query, results)
+  return results
+})
+
 safeHandle('fs:readFile', async (_e, filePath) => {
   const abs = resolveInScope(filePath)
   const st = await stat(abs)
