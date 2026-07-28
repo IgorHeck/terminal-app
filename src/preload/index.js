@@ -37,6 +37,11 @@ const api = {
   fs: {
     readDir: (path) => ipcRenderer.invoke('fs:readDir', path),
     readFile: (path) => ipcRenderer.invoke('fs:readFile', path),
+    writeFile: (path, content) => ipcRenderer.invoke('fs:writeFile', path, content),
+    mkdir: (path) => ipcRenderer.invoke('fs:mkdir', path),
+    rename: (oldPath, newPath) => ipcRenderer.invoke('fs:rename', oldPath, newPath),
+    delete: (path) => ipcRenderer.invoke('fs:delete', path),
+    showItemInFolder: (path) => ipcRenderer.invoke('shell:showItemInFolder', path),
   },
   session: {
     load: () => ipcRenderer.invoke('session:load'),

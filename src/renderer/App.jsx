@@ -50,7 +50,16 @@ function AppLayout() {
     closePane,
     selectTab,
   } = useTerminals()
-  const { openFilesByProject, activeFileByProject, openFile, openDiff, selectFile, closeFile } = useEditor()
+  const {
+    openFilesByProject,
+    activeFileByProject,
+    dirtyByProject,
+    openFile,
+    openDiff,
+    selectFile,
+    closeFile,
+    isFileDirty,
+  } = useEditor()
   const {
     runProcessesByProject,
     runModalOpen,
@@ -183,6 +192,17 @@ function AppLayout() {
   )
 
   const openGitView = useCallback(() => setActiveView('git'), [])
+
+  // Fecha arquivo somente após confirmação se houver edições não salvas
+  const handleCloseFile = useCallback(
+    (file) => {
+      if (isFileDirty(activeProjectId, file.path)) {
+        if (!window.confirm(`"${file.name}" tem alterações não salvas. Fechar mesmo assim?`)) return
+      }
+      closeFile(activeProjectId, file)
+    },
+    [activeProjectId, isFileDirty, closeFile]
+  )
 
   const handleSelectTab = useCallback(
     (project, tab) => {
@@ -320,7 +340,7 @@ function AppLayout() {
                   project={activeProject}
                   gitState={activeGitState}
                   onSelect={(f) => selectFile(activeProjectId, f)}
-                  onClose={(f) => closeFile(activeProjectId, f)}
+                  onClose={handleCloseFile}
                 />
                 {activeFile?.kind === 'diff' ? (
                   <DiffViewer file={activeFile} />

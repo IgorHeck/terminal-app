@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, shell, session } from 'electron'
 import { join, dirname, resolve, relative, isAbsolute } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync, watch } from 'fs'
-import { readdir, readFile, stat } from 'fs/promises'
+import { readdir, readFile, writeFile, mkdir, rename, rm, stat } from 'fs/promises'
 import { homedir } from 'os'
 import {
   createPty,
@@ -152,6 +152,33 @@ safeHandle('fs:readDir', async (_e, dirPath) => {
 ipcMain.handle('shell:openExternal', (_e, url) => {
   if (typeof url === 'string' && /^https?:\/\//i.test(url)) return shell.openExternal(url)
   return false
+})
+
+// abre o arquivo/pasta no explorador do SO
+ipcMain.handle('shell:showItemInFolder', (_e, filePath) => {
+  const abs = resolveInScope(filePath)
+  shell.showItemInFolder(abs)
+})
+
+safeHandle('fs:writeFile', async (_e, filePath, content) => {
+  const abs = resolveInScope(filePath)
+  await writeFile(abs, content, 'utf8')
+})
+
+safeHandle('fs:mkdir', async (_e, dirPath) => {
+  const abs = resolveInScope(dirPath)
+  await mkdir(abs, { recursive: true })
+})
+
+safeHandle('fs:rename', async (_e, oldPath, newPath) => {
+  const absOld = resolveInScope(oldPath)
+  const absNew = resolveInScope(newPath)
+  await rename(absOld, absNew)
+})
+
+safeHandle('fs:delete', async (_e, filePath) => {
+  const abs = resolveInScope(filePath)
+  await rm(abs, { recursive: true, force: true })
 })
 
 safeHandle('fs:readFile', async (_e, filePath) => {
