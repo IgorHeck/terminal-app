@@ -16,7 +16,9 @@
     "format": "prettier --write src",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",
@@ -37,6 +39,7 @@
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",
     "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.62.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "electron": "^31.0.0",
