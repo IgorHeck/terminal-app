@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell, session } from 'electron'
-import { join, dirname, resolve, relative, isAbsolute } from 'path'
+import { join, dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync, watch } from 'fs'
 import { readdir, readFile, writeFile, mkdir, rename, rm, stat } from 'fs/promises'
@@ -52,6 +52,12 @@ import {
   setDeviceClientId,
   invalidateAuthCache,
 } from './github.js'
+import { expandHome, isInsideRoot } from './pathUtils.js'
+import { setupAutoUpdater } from './update.js'
+import { setupMainErrorHandlers, writeErrorLog } from './errorLog.js'
+
+// Registra handlers de erro o mais cedo possível — antes de qualquer I/O.
+setupMainErrorHandlers()
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -128,20 +134,7 @@ ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
 // ---------------------------------------------------------------
 // IPC — Filesystem (explorador + editor, somente leitura)
 // ---------------------------------------------------------------
-function expandHome(p) {
-  if (!p) return homedir()
-  if (p === '~') return homedir()
-  if (p.startsWith('~/') || p.startsWith('~\\')) return join(homedir(), p.slice(2))
-  return p
-}
-
 const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2 MB
-
-// caminho pertence ao diretório raiz? (path.relative no win32 já ignora caixa)
-function isInsideRoot(root, abs) {
-  const rel = relative(root, abs)
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
-}
 
 // Resolve o caminho pedido pelo renderer e garante que ele está dentro do
 // cwd de algum projeto cadastrado. O renderer é UI: nenhum caminho fora do
@@ -162,6 +155,11 @@ safeHandle('fs:readDir', async (_e, dirPath) => {
   return entries
     .map((d) => ({ name: d.name, path: join(abs, d.name), isDir: d.isDirectory() }))
     .sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1))
+})
+
+// Erros reportados pelo renderer (ErrorBoundary + window.onerror)
+ipcMain.on('app:reportError', (_e, payload) => {
+  writeErrorLog('renderer', new Error(payload?.message || 'renderer error'), payload)
 })
 
 // abre uma URL externa no navegador padrão (botão "Abrir :porta" do Run)
@@ -642,6 +640,7 @@ app.whenReady().then(() => {
   applyCsp()
   createWindow()
   getProjects().forEach(startGitWatcher)
+  setupAutoUpdater(mainWindow, app)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
