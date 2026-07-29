@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell, session } from 'electron'
-import { join, dirname, resolve, relative, isAbsolute } from 'path'
+import { join, dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, mkdirSync, appendFileSync, watch } from 'fs'
 import { readdir, readFile, writeFile, mkdir, rename, rm, stat } from 'fs/promises'
@@ -52,6 +52,7 @@ import {
   setDeviceClientId,
   invalidateAuthCache,
 } from './github.js'
+import { expandHome, isInsideRoot } from './pathUtils.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -128,20 +129,7 @@ ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
 // ---------------------------------------------------------------
 // IPC — Filesystem (explorador + editor, somente leitura)
 // ---------------------------------------------------------------
-function expandHome(p) {
-  if (!p) return homedir()
-  if (p === '~') return homedir()
-  if (p.startsWith('~/') || p.startsWith('~\\')) return join(homedir(), p.slice(2))
-  return p
-}
-
 const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2 MB
-
-// caminho pertence ao diretório raiz? (path.relative no win32 já ignora caixa)
-function isInsideRoot(root, abs) {
-  const rel = relative(root, abs)
-  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
-}
 
 // Resolve o caminho pedido pelo renderer e garante que ele está dentro do
 // cwd de algum projeto cadastrado. O renderer é UI: nenhum caminho fora do
