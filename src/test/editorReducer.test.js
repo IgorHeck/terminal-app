@@ -11,7 +11,7 @@ function dispatch(state, action) {
 
 describe('editorReducer', () => {
   it('estado inicial está correto', () => {
-    expect(initialState).toEqual({ openFilesByProject: {}, activeFileByProject: {} })
+    expect(initialState).toEqual({ openFilesByProject: {}, activeFileByProject: {}, dirtyByProject: {} })
   })
 
   // ------------------------------------------------------------------
