@@ -54,6 +54,10 @@ import {
 } from './github.js'
 import { expandHome, isInsideRoot } from './pathUtils.js'
 import { setupAutoUpdater } from './update.js'
+import { setupMainErrorHandlers, writeErrorLog } from './errorLog.js'
+
+// Registra handlers de erro o mais cedo possível — antes de qualquer I/O.
+setupMainErrorHandlers()
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -151,6 +155,11 @@ safeHandle('fs:readDir', async (_e, dirPath) => {
   return entries
     .map((d) => ({ name: d.name, path: join(abs, d.name), isDir: d.isDirectory() }))
     .sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1))
+})
+
+// Erros reportados pelo renderer (ErrorBoundary + window.onerror)
+ipcMain.on('app:reportError', (_e, payload) => {
+  writeErrorLog('renderer', new Error(payload?.message || 'renderer error'), payload)
 })
 
 // abre uma URL externa no navegador padrão (botão "Abrir :porta" do Run)
