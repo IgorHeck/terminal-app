@@ -1,0 +1,50 @@
+appId: com.igorheck.terminal-app
+productName: Terminal App
+copyright: Copyright © 2026 Igor Heck
+
+# Diretório de saída do installer e dos builds.
+directories:
+  output: dist
+  buildResources: build
+
+# Arquivos incluídos no app empacotado.
+# O electron-vite já compila tudo para `out/`, então incluímos apenas esse diretório.
+files:
+  - out/**/*
+  - node_modules/**/*
+  - package.json
+
+# Módulos que têm código nativo e precisam ser incluídos sem Asar.
+# node-pty é o único módulo nativo do projeto.
+asarUnpack:
+  - node_modules/node-pty/**
+
+# ----------------------------------------------------------------
+# Windows
+# ----------------------------------------------------------------
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  # Substitua pelo caminho do ícone ICO quando disponível.
+  # icon: build/icon.ico
+
+nsis:
+  oneClick: true
+  allowToChangeInstallationDirectory: false
+  deleteAppDataOnUninstall: false
+  # Cria atalho na área de trabalho.
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Terminal App
+
+# ----------------------------------------------------------------
+# Configuração de publish para auto-update (11.5)
+# ----------------------------------------------------------------
+publish:
+  provider: github
+  owner: IgorHeck
+  repo: terminal-app
+  # O token de acesso é lido da variável de ambiente GH_TOKEN em CI.
+  # Em desenvolvimento local, auto-update é desabilitado (NODE_ENV !== 'production').
