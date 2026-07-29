@@ -53,6 +53,7 @@ import {
   invalidateAuthCache,
 } from './github.js'
 import { expandHome, isInsideRoot } from './pathUtils.js'
+import { setupAutoUpdater } from './update.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -630,6 +631,7 @@ app.whenReady().then(() => {
   applyCsp()
   createWindow()
   getProjects().forEach(startGitWatcher)
+  setupAutoUpdater(mainWindow, app)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

@@ -8,7 +8,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         // módulos nativos / CommonJS que não devem ser empacotados
-        external: ['node-pty', 'electron-store']
+        external: ['node-pty', 'electron-store', 'electron-updater']
       }
     }
   },

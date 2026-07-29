@@ -122,6 +122,22 @@ const api = {
   },
   app: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+    reportError: (payload) => ipcRenderer.send('app:reportError', payload),
+  },
+  update: {
+    check: () => ipcRenderer.invoke('update:check'),
+    download: () => ipcRenderer.invoke('update:download'),
+    install: () => ipcRenderer.invoke('update:install'),
+    onStatus: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('update:status', handler)
+      return () => ipcRenderer.removeListener('update:status', handler)
+    },
+    onProgress: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('update:progress', handler)
+      return () => ipcRenderer.removeListener('update:progress', handler)
+    },
   },
   win: {
     minimize: () => ipcRenderer.send('window:minimize'),
