@@ -17,6 +17,7 @@ import RunProcessModal from './components/RunProcessModal.jsx'
 import SettingsPanel from './components/SettingsPanel.jsx'
 import CommandPalette from './components/CommandPalette.jsx'
 import SearchPanel from './components/SearchPanel.jsx'
+import SnippetBar from './components/SnippetBar.jsx'
 import Divider from './components/Divider.jsx'
 import { useTweaks } from './hooks/useTweaks.js'
 import { useResizable } from './hooks/useResizable.js'
@@ -378,6 +379,12 @@ function AppLayout() {
               <Divider axis="y" onPointerDown={onTermResize} />
 
               <div style={{ height: termHeight }} className="flex flex-col flex-shrink-0 min-h-0">
+                <SnippetBar
+                  snippets={activeProject?.snippets || []}
+                  activePtyId={
+                    tabs.find((t) => t.id === activeTabId)?.panes?.[0] || null
+                  }
+                />
                 <TabBar
                   tabs={tabs}
                   activeTabId={activeTabId}

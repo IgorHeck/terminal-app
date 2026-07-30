@@ -22,6 +22,9 @@ export default function ProjectModal({ project, onSave, onCancel }) {
   const [terminalTheme, setTerminalTheme] = useState('auto')
   const [guardAllowlist, setGuardAllowlist] = useState([])
   const [allowlistInput, setAllowlistInput] = useState('')
+  const [snippets, setSnippets] = useState([])
+  const [snippetName, setSnippetName] = useState('')
+  const [snippetCmd, setSnippetCmd] = useState('')
   const [profiles, setProfiles] = useState([])
   const [profName, setProfName] = useState('')
   const [profShell, setProfShell] = useState(SHELLS[0])
@@ -34,6 +37,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       setShell(project.shell || '')
       setTerminalTheme(project.terminalTheme || 'auto')
       setGuardAllowlist(project.guardAllowlist || [])
+      setSnippets(project.snippets || [])
       setProfiles(project.profiles || [])
     }
   }, [project])
@@ -55,6 +59,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       shell: shell.trim() || null,
       terminalTheme: terminalTheme || 'auto',
       guardAllowlist,
+      snippets,
       profiles,
     })
   }
@@ -103,6 +108,55 @@ export default function ProjectModal({ project, onSave, onCancel }) {
             </option>
           ))}
         </select>
+
+        <label className="block text-[12px] text-text-2 mb-1.5">Snippets (comandos favoritos)</label>
+        <div className="mb-2 flex flex-col gap-1">
+          {snippets.map((s, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 text-[12px] font-mono bg-bg-term border border-border-soft rounded-lg px-2 h-8"
+            >
+              <span className="text-accent w-20 flex-shrink-0 truncate">{s.name}</span>
+              <span className="text-text truncate flex-1">{s.command}</span>
+              <button
+                type="button"
+                onClick={() => setSnippets((prev) => prev.filter((_, j) => j !== i))}
+                className="w-5 h-5 rounded text-text-3 hover:text-red hover:bg-surface-hi"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-4">
+          <input
+            value={snippetName}
+            onChange={(e) => setSnippetName(e.target.value)}
+            placeholder="nome"
+            className="w-24 h-9 px-3 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          />
+          <input
+            value={snippetCmd}
+            onChange={(e) => setSnippetCmd(e.target.value)}
+            placeholder="comando"
+            className="flex-1 h-9 px-3 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!snippetName.trim() || !snippetCmd.trim()) return
+              setSnippets((prev) => [
+                ...prev,
+                { id: `s_${Date.now()}`, name: snippetName.trim(), command: snippetCmd.trim() },
+              ])
+              setSnippetName('')
+              setSnippetCmd('')
+            }}
+            className="h-9 px-3 rounded-lg text-sm text-text-2 bg-surface hover:bg-surface-hi"
+          >
+            +
+          </button>
+        </div>
 
         <label className="block text-[12px] text-text-2 mb-1.5">Perfis de shell (opcional)</label>
         <div className="mb-2 flex flex-col gap-1">
