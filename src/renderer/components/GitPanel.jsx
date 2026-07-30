@@ -819,6 +819,165 @@ function LogSection({ projectId }) {
   )
 }
 
+// ---------------------------------------------------------------
+// Worktrees (12.6)
+// ---------------------------------------------------------------
+
+function WorktreeSection({ projectId }) {
+  const [open, setOpen] = useState(false)
+  const [worktrees, setWorktrees] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [newPath, setNewPath] = useState('')
+  const [newBranch, setNewBranch] = useState('')
+  const [isNewBranch, setIsNewBranch] = useState(false)
+  const [confirm, setConfirm] = useState(null) // path a remover
+
+  const load = useCallback(async () => {
+    if (!projectId) return
+    setLoading(true)
+    const res = await window.api.git.worktreeList(projectId)
+    setWorktrees(res.ok ? res.data || [] : [])
+    setLoading(false)
+  }, [projectId])
+
+  useEffect(() => {
+    if (open) load()
+  }, [open, load])
+
+  async function handleAdd() {
+    if (!newPath.trim() || !newBranch.trim()) return
+    const res = await window.api.git.worktreeAdd(projectId, newPath.trim(), newBranch.trim(), isNewBranch)
+    if (res.ok !== false) {
+      setAddOpen(false)
+      setNewPath('')
+      setNewBranch('')
+      load()
+    }
+  }
+
+  async function handleRemove(path, force = false) {
+    await window.api.git.worktreeRemove(projectId, path, force)
+    setConfirm(null)
+    load()
+  }
+
+  return (
+    <div className="border-b border-border-soft">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface text-left"
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-3 flex-1">
+          Worktrees
+        </span>
+        <span className="text-text-4 text-[10px]">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="pb-1">
+          {loading ? (
+            <div className="px-3 py-1 text-[11px] text-text-4">carregando…</div>
+          ) : (
+            worktrees.map((wt, i) => (
+              <div
+                key={i}
+                className="group flex items-center gap-2 px-3"
+                style={{ height: 'var(--tree-h)' }}
+              >
+                <span className="flex-1 text-[11px] font-mono text-text-2 truncate" title={wt.path}>
+                  {wt.path.split(/[\\/]/).pop() || wt.path}
+                </span>
+                {wt.branch && (
+                  <span className="text-[10px] font-mono text-accent truncate max-w-[80px]">
+                    {wt.branch}
+                  </span>
+                )}
+                {wt.locked && (
+                  <span className="text-[9px] text-yellow-400">🔒</span>
+                )}
+                {i > 0 && ( // não mostra remoção do worktree principal
+                  <button
+                    type="button"
+                    onClick={() => setConfirm(wt.path)}
+                    className="w-5 h-5 rounded text-text-4 hover:text-red hover:bg-surface-hi opacity-0 group-hover:opacity-100 text-xs"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+
+          {confirm && (
+            <div className="mx-3 my-1 p-2 bg-surface rounded border border-border-soft text-[11px]">
+              <p className="text-text-2 mb-2">Remover worktree?</p>
+              <div className="flex gap-1">
+                <button onClick={() => handleRemove(confirm, false)}
+                  className="flex-1 h-6 rounded bg-surface-hi text-text-2 hover:bg-border text-[11px]">
+                  remover
+                </button>
+                <button onClick={() => handleRemove(confirm, true)}
+                  className="flex-1 h-6 rounded bg-red/20 text-red hover:bg-red/30 text-[11px]">
+                  forçar
+                </button>
+                <button onClick={() => setConfirm(null)}
+                  className="flex-1 h-6 rounded text-text-3 hover:bg-surface text-[11px]">
+                  cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {addOpen ? (
+            <div className="mx-3 my-1 flex flex-col gap-1">
+              <input
+                value={newPath}
+                onChange={(e) => setNewPath(e.target.value)}
+                placeholder="Caminho do novo worktree"
+                className="h-7 px-2 bg-bg-term border border-border rounded text-[11px] font-mono focus:border-accent outline-none"
+              />
+              <input
+                value={newBranch}
+                onChange={(e) => setNewBranch(e.target.value)}
+                placeholder="Branch"
+                className="h-7 px-2 bg-bg-term border border-border rounded text-[11px] font-mono focus:border-accent outline-none"
+              />
+              <label className="flex items-center gap-1.5 text-[11px] text-text-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isNewBranch}
+                  onChange={(e) => setIsNewBranch(e.target.checked)}
+                />
+                Criar nova branch (-b)
+              </label>
+              <div className="flex gap-1">
+                <button onClick={handleAdd}
+                  className="flex-1 h-6 rounded bg-accent text-white text-[11px]">
+                  adicionar
+                </button>
+                <button onClick={() => setAddOpen(false)}
+                  className="flex-1 h-6 rounded text-text-3 hover:bg-surface text-[11px]">
+                  cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="w-full text-left px-5 h-6 text-[11px] font-mono text-text-3 hover:text-text hover:bg-surface"
+            >
+              + adicionar worktree
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Header do painel com abas Git | GitHub
 function Header({ branch, upstream, ahead, behind, activeTab, onTabChange }) {
   const { unreadCount } = useGitHub()
@@ -978,6 +1137,9 @@ export default function GitPanel({ width = 244, onOpenDiff }) {
 
           {/* Stash */}
           <StashSection projectId={activeProjectId} onDone={refresh} />
+
+          {/* Worktrees */}
+          <WorktreeSection projectId={activeProjectId} />
 
           {/* Log de commits */}
           <LogSection projectId={activeProjectId} />
