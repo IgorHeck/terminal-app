@@ -50,6 +50,7 @@ const api = {
       return () => ipcRenderer.removeListener('fs:fileChanged', handler)
     },
     searchFiles: (projectId, query) => ipcRenderer.invoke('fs:searchFiles', projectId, query),
+    searchContent: (projectId, query) => ipcRenderer.invoke('fs:searchContent', projectId, query),
   },
   session: {
     load: () => ipcRenderer.invoke('session:load'),
@@ -93,6 +94,14 @@ const api = {
     // 8.6 Apply patch (hunk staging)
     applyPatch: (projectId, patch, opts) =>
       ipcRenderer.invoke('git:applyPatch', projectId, patch, opts),
+    // 12.5 Log com parentesco (graph)
+    log: (projectId, limit) => ipcRenderer.invoke('git:log', projectId, limit),
+    // 12.6 Worktrees
+    worktreeList: (projectId) => ipcRenderer.invoke('git:worktreeList', projectId),
+    worktreeAdd: (projectId, path, branch, newBranch) =>
+      ipcRenderer.invoke('git:worktreeAdd', projectId, path, branch, newBranch),
+    worktreeRemove: (projectId, path, force) =>
+      ipcRenderer.invoke('git:worktreeRemove', projectId, path, force),
   },
   github: {
     getAuthState: () => ipcRenderer.invoke('github:authState'),
@@ -120,6 +129,9 @@ const api = {
       return () => ipcRenderer.removeListener('github:authChanged', handler)
     },
   },
+  guard: {
+    checkPaste: (ptyId, text) => ipcRenderer.invoke('guard:checkPaste', ptyId, text),
+  },
   app: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
     reportError: (payload) => ipcRenderer.send('app:reportError', payload),
@@ -144,6 +156,8 @@ const api = {
     maximize: () => ipcRenderer.send('window:maximize'),
     close: () => ipcRenderer.send('window:close'),
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+    openProject: (projectId) => ipcRenderer.invoke('window:openProject', projectId),
+    getStartupProject: () => ipcRenderer.invoke('window:getStartupProject'),
     onMaximizeChange: (cb) => {
       const handler = (_e, val) => cb(val)
       ipcRenderer.on('window:maximized', handler)

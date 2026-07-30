@@ -3,6 +3,7 @@ import { useGit } from '../contexts/GitContext.jsx'
 import { useProjects } from '../contexts/ProjectsContext.jsx'
 import { useGitHub } from '../contexts/GitHubContext.jsx'
 import GitHubPanel from './GitHubPanel.jsx'
+import CommitGraph from './CommitGraph.jsx'
 
 // ============================================================
 // GitPanel — painel git completo (Fases 8–9).
@@ -758,22 +759,108 @@ function StashSection({ projectId, onDone }) {
 }
 
 // Log de commits
-function LogSection({ commits, projectId }) {
+function LogSection({ projectId }) {
   const [open, setOpen] = useState(true)
-  const [selected, setSelected] = useState(null) // hash selecionado
-  const [detail, setDetail] = useState(null) // { info, diff }
+  const [selectedHash, setSelectedHash] = useState(null)
+  const [detail, setDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [graphMode, setGraphMode] = useState(true)
 
   const loadDetail = useCallback(async (hash) => {
-    if (selected === hash) { setSelected(null); setDetail(null); return }
-    setSelected(hash)
+    if (selectedHash === hash) { setSelectedHash(null); setDetail(null); return }
+    setSelectedHash(hash)
     setLoadingDetail(true)
     const res = await window.api.git.commitDetail(projectId, hash)
     setLoadingDetail(false)
     if (res.ok) setDetail(res.data)
-  }, [selected, projectId])
+  }, [selectedHash, projectId])
 
-  if (!commits?.length) return null
+  return (
+    <div className="border-b border-border-soft flex flex-col">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface text-left flex-shrink-0"
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-text-3 flex-1">
+          Commits
+        </span>
+        <button
+          type="button"
+          title={graphMode ? 'Modo lista' : 'Modo graph'}
+          onClick={(e) => { e.stopPropagation(); setGraphMode((v) => !v) }}
+          className="text-[10px] text-text-4 hover:text-text-2 px-1"
+        >
+          {graphMode ? '⋮' : '⎇'}
+        </button>
+        <span className="text-text-4 text-[10px]">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="max-h-72 overflow-auto flex flex-col">
+          {graphMode ? (
+            <CommitGraph projectId={projectId} onSelectCommit={loadDetail} />
+          ) : null}
+
+          {selectedHash && (
+            <div className="mx-3 mb-2 bg-surface rounded border border-border-soft overflow-hidden flex-shrink-0">
+              {loadingDetail ? (
+                <div className="p-2 text-[10px] text-text-4">Carregando…</div>
+              ) : detail ? (
+                <pre className="p-2 text-[10px] font-mono text-text-3 overflow-x-auto whitespace-pre max-h-48 overflow-y-auto">
+                  {detail.diff || 'Sem diff disponível'}
+                </pre>
+              ) : null}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------
+// Worktrees (12.6)
+// ---------------------------------------------------------------
+
+function WorktreeSection({ projectId }) {
+  const [open, setOpen] = useState(false)
+  const [worktrees, setWorktrees] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [newPath, setNewPath] = useState('')
+  const [newBranch, setNewBranch] = useState('')
+  const [isNewBranch, setIsNewBranch] = useState(false)
+  const [confirm, setConfirm] = useState(null) // path a remover
+
+  const load = useCallback(async () => {
+    if (!projectId) return
+    setLoading(true)
+    const res = await window.api.git.worktreeList(projectId)
+    setWorktrees(res.ok ? res.data || [] : [])
+    setLoading(false)
+  }, [projectId])
+
+  useEffect(() => {
+    if (open) load()
+  }, [open, load])
+
+  async function handleAdd() {
+    if (!newPath.trim() || !newBranch.trim()) return
+    const res = await window.api.git.worktreeAdd(projectId, newPath.trim(), newBranch.trim(), isNewBranch)
+    if (res.ok !== false) {
+      setAddOpen(false)
+      setNewPath('')
+      setNewBranch('')
+      load()
+    }
+  }
+
+  async function handleRemove(path, force = false) {
+    await window.api.git.worktreeRemove(projectId, path, force)
+    setConfirm(null)
+    load()
+  }
 
   return (
     <div className="border-b border-border-soft">
@@ -783,44 +870,108 @@ function LogSection({ commits, projectId }) {
         className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface text-left"
       >
         <span className="text-[10px] font-semibold uppercase tracking-wider text-text-3 flex-1">
-          Commits recentes
+          Worktrees
         </span>
         <span className="text-text-4 text-[10px]">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div>
-          {commits.slice(0, 15).map((c) => (
-            <div key={c.hash}>
-              <button
-                type="button"
-                onClick={() => loadDetail(c.hash)}
-                className="w-full px-3 py-1.5 hover:bg-surface text-left"
+        <div className="pb-1">
+          {loading ? (
+            <div className="px-3 py-1 text-[11px] text-text-4">carregando…</div>
+          ) : (
+            worktrees.map((wt, i) => (
+              <div
+                key={i}
+                className="group flex items-center gap-2 px-3"
+                style={{ height: 'var(--tree-h)' }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-text-4 text-[10px] font-mono flex-shrink-0">
-                    {c.shortHash}
+                <span className="flex-1 text-[11px] font-mono text-text-2 truncate" title={wt.path}>
+                  {wt.path.split(/[\\/]/).pop() || wt.path}
+                </span>
+                {wt.branch && (
+                  <span className="text-[10px] font-mono text-accent truncate max-w-[80px]">
+                    {wt.branch}
                   </span>
-                  <span className="text-text-2 text-[11px] font-mono truncate">{c.subject}</span>
-                </div>
-                <div className="text-text-4 text-[10px] font-mono mt-0.5">
-                  {c.author} · {c.relativeDate}
-                </div>
-              </button>
+                )}
+                {wt.locked && (
+                  <span className="text-[9px] text-yellow-400">🔒</span>
+                )}
+                {i > 0 && ( // não mostra remoção do worktree principal
+                  <button
+                    type="button"
+                    onClick={() => setConfirm(wt.path)}
+                    className="w-5 h-5 rounded text-text-4 hover:text-red hover:bg-surface-hi opacity-0 group-hover:opacity-100 text-xs"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))
+          )}
 
-              {selected === c.hash && (
-                <div className="mx-3 mb-2 bg-surface rounded border border-border-soft overflow-hidden">
-                  {loadingDetail ? (
-                    <div className="p-2 text-[10px] text-text-4">Carregando…</div>
-                  ) : detail ? (
-                    <pre className="p-2 text-[10px] font-mono text-text-3 overflow-x-auto whitespace-pre max-h-48 overflow-y-auto">
-                      {detail.diff || 'Sem diff disponível'}
-                    </pre>
-                  ) : null}
-                </div>
-              )}
+          {confirm && (
+            <div className="mx-3 my-1 p-2 bg-surface rounded border border-border-soft text-[11px]">
+              <p className="text-text-2 mb-2">Remover worktree?</p>
+              <div className="flex gap-1">
+                <button onClick={() => handleRemove(confirm, false)}
+                  className="flex-1 h-6 rounded bg-surface-hi text-text-2 hover:bg-border text-[11px]">
+                  remover
+                </button>
+                <button onClick={() => handleRemove(confirm, true)}
+                  className="flex-1 h-6 rounded bg-red/20 text-red hover:bg-red/30 text-[11px]">
+                  forçar
+                </button>
+                <button onClick={() => setConfirm(null)}
+                  className="flex-1 h-6 rounded text-text-3 hover:bg-surface text-[11px]">
+                  cancelar
+                </button>
+              </div>
             </div>
-          ))}
+          )}
+
+          {addOpen ? (
+            <div className="mx-3 my-1 flex flex-col gap-1">
+              <input
+                value={newPath}
+                onChange={(e) => setNewPath(e.target.value)}
+                placeholder="Caminho do novo worktree"
+                className="h-7 px-2 bg-bg-term border border-border rounded text-[11px] font-mono focus:border-accent outline-none"
+              />
+              <input
+                value={newBranch}
+                onChange={(e) => setNewBranch(e.target.value)}
+                placeholder="Branch"
+                className="h-7 px-2 bg-bg-term border border-border rounded text-[11px] font-mono focus:border-accent outline-none"
+              />
+              <label className="flex items-center gap-1.5 text-[11px] text-text-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isNewBranch}
+                  onChange={(e) => setIsNewBranch(e.target.checked)}
+                />
+                Criar nova branch (-b)
+              </label>
+              <div className="flex gap-1">
+                <button onClick={handleAdd}
+                  className="flex-1 h-6 rounded bg-accent text-white text-[11px]">
+                  adicionar
+                </button>
+                <button onClick={() => setAddOpen(false)}
+                  className="flex-1 h-6 rounded text-text-3 hover:bg-surface text-[11px]">
+                  cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="w-full text-left px-5 h-6 text-[11px] font-mono text-text-3 hover:text-text hover:bg-surface"
+            >
+              + adicionar worktree
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -987,8 +1138,11 @@ export default function GitPanel({ width = 244, onOpenDiff }) {
           {/* Stash */}
           <StashSection projectId={activeProjectId} onDone={refresh} />
 
+          {/* Worktrees */}
+          <WorktreeSection projectId={activeProjectId} />
+
           {/* Log de commits */}
-          <LogSection commits={lastCommits} projectId={activeProjectId} />
+          <LogSection projectId={activeProjectId} />
         </div>
       )}
     </div>

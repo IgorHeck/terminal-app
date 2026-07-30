@@ -11,8 +11,9 @@ import {
   killPty,
   killAllForProject,
   getPtyProjectName,
+  getPtyProjectId,
 } from './pty.js'
-import { checkCommand } from './guard.js'
+import { checkCommand, checkPaste } from './guard.js'
 import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
 import { getSession, saveSession } from './session.js'
@@ -35,6 +36,10 @@ import {
   stashDrop,
   getCommitDetail,
   applyPatch,
+  getLog,
+  listWorktrees,
+  addWorktree,
+  removeWorktree,
 } from './git.js'
 import {
   getAuthState,
@@ -62,6 +67,9 @@ setupMainErrorHandlers()
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 let mainWindow = null
+
+// Mapa WebContents.id → projectId para janelas de projeto secundárias (12.4)
+const windowStartupProjects = new Map()
 
 // ---------------------------------------------------------------
 // Log de segurança
@@ -122,14 +130,48 @@ function createWindow() {
 // ---------------------------------------------------------------
 // IPC — Controles de janela (title bar customizada, frame:false)
 // ---------------------------------------------------------------
-ipcMain.on('window:minimize', () => mainWindow?.minimize())
-ipcMain.on('window:maximize', () => {
-  if (!mainWindow) return
-  if (mainWindow.isMaximized()) mainWindow.unmaximize()
-  else mainWindow.maximize()
+ipcMain.on('window:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize())
+ipcMain.on('window:maximize', (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender)
+  if (!win) return
+  if (win.isMaximized()) win.unmaximize()
+  else win.maximize()
 })
-ipcMain.on('window:close', () => mainWindow?.close())
-ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
+ipcMain.on('window:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close())
+ipcMain.handle('window:isMaximized', (e) => BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false)
+
+// Abre um projeto em janela separada (12.4)
+ipcMain.handle('window:openProject', (_e, projectId) => {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 820,
+    minWidth: 900,
+    minHeight: 560,
+    backgroundColor: '#0c0c0e',
+    frame: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  })
+  win.on('maximize', () => win.webContents.send('window:maximized', true))
+  win.on('unmaximize', () => win.webContents.send('window:maximized', false))
+  windowStartupProjects.set(win.webContents.id, projectId)
+  win.webContents.on('destroyed', () => windowStartupProjects.delete(win.webContents.id))
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    win.loadURL(process.env.ELECTRON_RENDERER_URL)
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+})
+
+// Retorna o projectId de startup para a janela que chama (null para a janela principal)
+ipcMain.handle('window:getStartupProject', (e) => {
+  return windowStartupProjects.get(e.sender.id) ?? null
+})
 
 // ---------------------------------------------------------------
 // IPC — Filesystem (explorador + editor, somente leitura)
@@ -274,6 +316,57 @@ safeHandle('fs:searchFiles', async (_e, projectId, query) => {
   const cwd = resolve(expandHome(project.cwd))
   const results = []
   await searchFilesRecursive(cwd, query, results)
+  return results
+})
+
+// Busca por conteúdo no projeto (12.1): pesquisa recursiva com Node.js
+async function searchContentRecursive(dir, query, results, limit = 300) {
+  if (results.length >= limit) return
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  const lowerQuery = query.toLowerCase()
+  for (const e of entries) {
+    if (results.length >= limit) break
+    if (e.isDirectory()) {
+      if (!IGNORE_DIRS.has(e.name)) {
+        await searchContentRecursive(join(dir, e.name), query, results, limit)
+      }
+    } else {
+      const filePath = join(dir, e.name)
+      try {
+        const st = await stat(filePath)
+        if (st.size > 512 * 1024) continue // pula arquivos > 512 KB
+        const buf = await readFile(filePath)
+        if (buf.includes(0)) continue // pula binários
+        const text = buf.toString('utf8')
+        const lines = text.split('\n')
+        for (let i = 0; i < lines.length && results.length < limit; i++) {
+          if (lines[i].toLowerCase().includes(lowerQuery)) {
+            results.push({
+              path: filePath,
+              line: i + 1,
+              text: lines[i].slice(0, 200),
+            })
+          }
+        }
+      } catch {
+        // arquivo inacessível — ignorar
+      }
+    }
+  }
+}
+
+safeHandle('fs:searchContent', async (_e, projectId, query) => {
+  if (!query || query.trim().length < 2) return []
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  const cwd = resolve(expandHome(project.cwd))
+  const results = []
+  await searchContentRecursive(cwd, query.trim(), results)
   return results
 })
 
@@ -464,6 +557,34 @@ safeHandle('git:applyPatch', async (_e, projectId, patch, opts) => {
   return applyPatch(resolve(expandHome(project.cwd)), patch, opts)
 })
 
+// --- 12.5 Log com parentesco (graph) ---
+
+safeHandle('git:log', async (_e, projectId, limit) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return getLog(resolve(expandHome(project.cwd)), limit || 50)
+})
+
+// --- 12.6 Worktrees ---
+
+safeHandle('git:worktreeList', async (_e, projectId) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return listWorktrees(resolve(expandHome(project.cwd)))
+})
+
+safeHandle('git:worktreeAdd', async (_e, projectId, worktreePath, branch, newBranch) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return addWorktree(resolve(expandHome(project.cwd)), worktreePath, branch, newBranch)
+})
+
+safeHandle('git:worktreeRemove', async (_e, projectId, worktreePath, force) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return removeWorktree(resolve(expandHome(project.cwd)), worktreePath, force)
+})
+
 // ---------------------------------------------------------------
 // IPC — Projetos
 // ---------------------------------------------------------------
@@ -499,13 +620,22 @@ ipcMain.handle('pty:create', (_e, { projectId, shell, cwd } = {}) => {
   return ptyId
 })
 
+function getProjectAllowlist(ptyId) {
+  // Obtém a allowlist do projeto dono do pty
+  const projectId = getPtyProjectId ? getPtyProjectId(ptyId) : null
+  if (!projectId) return []
+  const project = getProjects().find((p) => p.id === projectId)
+  return project?.guardAllowlist || []
+}
+
 ipcMain.on('pty:write', (_e, ptyId, data) => {
   // acumula a linha para classificar no Enter
   if (data === '\r' || data === '\n') {
     const command = (lineBuffers[ptyId] || '').trim()
     lineBuffers[ptyId] = ''
     if (command) {
-      const { action, reason } = checkCommand(command)
+      const allowlist = getProjectAllowlist(ptyId)
+      const { action, reason } = checkCommand(command, allowlist)
       const projectName = getPtyProjectName(ptyId)
       if (action === 'BLOCK') {
         writeSecurityLog('BLOCK', projectName, ptyId, command)
@@ -530,6 +660,12 @@ ipcMain.on('pty:write', (_e, ptyId, data) => {
     lineBuffers[ptyId] = (lineBuffers[ptyId] || '') + data
     writePty(ptyId, data)
   }
+})
+
+// Guard v2 — verifica paste multiline antes de enviar ao PTY (12.7)
+safeHandle('guard:checkPaste', (_e, ptyId, text) => {
+  const allowlist = getProjectAllowlist(ptyId)
+  return checkPaste(text, allowlist)
 })
 
 // comando aprovado no modal de confirmação

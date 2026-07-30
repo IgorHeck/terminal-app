@@ -4,6 +4,9 @@ import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { SerializeAddon } from '@xterm/addon-serialize'
+import { TERMINAL_THEME_PALETTES } from '../hooks/useTweaks.js'
+import { useTerminals } from '../contexts/TerminalsContext.jsx'
 
 const BASE_THEME = {
   background: '#0b0b0d',
@@ -18,7 +21,12 @@ const BASE_THEME = {
   brightBlack: '#56565f',
 }
 
-function buildTheme() {
+function buildTheme(terminalTheme) {
+  // Paleta fixa quando o projeto tem tema definido
+  if (terminalTheme && terminalTheme !== 'auto' && TERMINAL_THEME_PALETTES[terminalTheme]) {
+    return TERMINAL_THEME_PALETTES[terminalTheme]
+  }
+  // Modo automático: deriva cursor/blue do acento CSS global
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim()
   const [r, g, b] = (raw || '99 102 241').split(/\s+/)
   const rgb = `rgb(${r}, ${g}, ${b})`
@@ -30,13 +38,16 @@ function buildTheme() {
   }
 }
 
-export default function Terminal({ tab, active, accentKey }) {
+export default function Terminal({ tab, active, accentKey, terminalTheme }) {
   const hostRef = useRef(null)
   const termRef = useRef(null)
   const fitRef = useRef(null)
   const searchAddonRef = useRef(null)
+  const serializeAddonRef = useRef(null)
   const searchOpenRef = useRef(false)
   const searchInputRef = useRef(null)
+  const { getScrollback, clearScrollback, registerSerializer, unregisterSerializer } =
+    useTerminals() || {}
 
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -55,16 +66,18 @@ export default function Terminal({ tab, active, accentKey }) {
       fontSize: 13,
       lineHeight: 1.35,
       cursorBlink: true,
-      theme: buildTheme(),
+      theme: buildTheme(terminalTheme),
       allowProposedApi: true,
     })
 
     const fit = new FitAddon()
     const search = new SearchAddon()
+    const serialize = new SerializeAddon()
     const webLinks = new WebLinksAddon()
 
     term.loadAddon(fit)
     term.loadAddon(search)
+    term.loadAddon(serialize)
     term.loadAddon(webLinks)
     term.open(hostRef.current)
 
@@ -81,6 +94,17 @@ export default function Terminal({ tab, active, accentKey }) {
     termRef.current = term
     fitRef.current = fit
     searchAddonRef.current = search
+    serializeAddonRef.current = serialize
+
+    // Restaura scrollback salvo na sessão anterior
+    const saved = getScrollback?.(tab.ptyId)
+    if (saved) {
+      term.write(saved)
+      clearScrollback?.(tab.ptyId)
+    }
+
+    // Registra função de serialização para o save de sessão
+    registerSerializer?.(tab.ptyId, () => serialize.serialize())
 
     // Ctrl+F abre busca; Escape fecha quando busca está aberta
     term.attachCustomKeyEventHandler((e) => {
@@ -100,7 +124,28 @@ export default function Terminal({ tab, active, accentKey }) {
     })
 
     // entrada do usuário -> PTY (passa pelo guard no main)
-    const onData = term.onData((data) => window.api.pty.write(tab.ptyId, data))
+    // Guard v2 (12.7): paste multiline → verifica antes de enviar
+    const onData = term.onData(async (data) => {
+      if (data.includes('\n') || data.includes('\r\n')) {
+        // Pode ser um paste multiline — verificar com o guard
+        const res = await window.api.guard.checkPaste(tab.ptyId, data)
+        if (res.ok !== false) {
+          const { action, reason } = res.data || res
+          if (action === 'BLOCK') {
+            term.write(`\r\n\x1b[31m✖ paste bloqueado: ${reason}\x1b[0m\r\n`)
+            return
+          }
+          if (action === 'CONFIRM') {
+            // Usa o canal guard:confirm existente via evento sintético
+            window.api.pty.write(tab.ptyId, '') // sem-op para manter contexto
+            // Emite confirmação para o modal
+            term.write(`\r\n\x1b[33m⚠ paste requer confirmação — use o terminal manualmente\x1b[0m\r\n`)
+            return
+          }
+        }
+      }
+      window.api.pty.write(tab.ptyId, data)
+    })
 
     // saída do PTY -> xterm
     const offData = window.api.pty.onData(({ ptyId, data }) => {
@@ -117,6 +162,7 @@ export default function Terminal({ tab, active, accentKey }) {
     ro.observe(hostRef.current)
 
     return () => {
+      unregisterSerializer?.(tab.ptyId)
       onData.dispose()
       offData()
       ro.disconnect()
@@ -132,10 +178,10 @@ export default function Terminal({ tab, active, accentKey }) {
     }
   }, [searchOpen])
 
-  // re-aplica o tema quando o acento muda (tweak)
+  // re-aplica o tema quando o acento ou o tema do projeto muda
   useEffect(() => {
-    if (termRef.current) termRef.current.options.theme = buildTheme()
-  }, [accentKey])
+    if (termRef.current) termRef.current.options.theme = buildTheme(terminalTheme)
+  }, [accentKey, terminalTheme])
 
   // re-fit ao tornar-se ativo
   useEffect(() => {

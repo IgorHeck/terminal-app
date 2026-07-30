@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { TERMINAL_THEMES } from '../hooks/useTweaks.js'
 
 const COLORS = [
   '#6366f1',
@@ -18,6 +19,12 @@ export default function ProjectModal({ project, onSave, onCancel }) {
   const [color, setColor] = useState(COLORS[0])
   const [cwd, setCwd] = useState('')
   const [shell, setShell] = useState('')
+  const [terminalTheme, setTerminalTheme] = useState('auto')
+  const [guardAllowlist, setGuardAllowlist] = useState([])
+  const [allowlistInput, setAllowlistInput] = useState('')
+  const [snippets, setSnippets] = useState([])
+  const [snippetName, setSnippetName] = useState('')
+  const [snippetCmd, setSnippetCmd] = useState('')
   const [profiles, setProfiles] = useState([])
   const [profName, setProfName] = useState('')
   const [profShell, setProfShell] = useState(SHELLS[0])
@@ -28,6 +35,9 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       setColor(project.color || COLORS[0])
       setCwd(project.cwd || '')
       setShell(project.shell || '')
+      setTerminalTheme(project.terminalTheme || 'auto')
+      setGuardAllowlist(project.guardAllowlist || [])
+      setSnippets(project.snippets || [])
       setProfiles(project.profiles || [])
     }
   }, [project])
@@ -47,6 +57,9 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       color,
       cwd: cwd.trim(),
       shell: shell.trim() || null,
+      terminalTheme: terminalTheme || 'auto',
+      guardAllowlist,
+      snippets,
       profiles,
     })
   }
@@ -96,6 +109,55 @@ export default function ProjectModal({ project, onSave, onCancel }) {
           ))}
         </select>
 
+        <label className="block text-[12px] text-text-2 mb-1.5">Snippets (comandos favoritos)</label>
+        <div className="mb-2 flex flex-col gap-1">
+          {snippets.map((s, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 text-[12px] font-mono bg-bg-term border border-border-soft rounded-lg px-2 h-8"
+            >
+              <span className="text-accent w-20 flex-shrink-0 truncate">{s.name}</span>
+              <span className="text-text truncate flex-1">{s.command}</span>
+              <button
+                type="button"
+                onClick={() => setSnippets((prev) => prev.filter((_, j) => j !== i))}
+                className="w-5 h-5 rounded text-text-3 hover:text-red hover:bg-surface-hi"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-4">
+          <input
+            value={snippetName}
+            onChange={(e) => setSnippetName(e.target.value)}
+            placeholder="nome"
+            className="w-24 h-9 px-3 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          />
+          <input
+            value={snippetCmd}
+            onChange={(e) => setSnippetCmd(e.target.value)}
+            placeholder="comando"
+            className="flex-1 h-9 px-3 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (!snippetName.trim() || !snippetCmd.trim()) return
+              setSnippets((prev) => [
+                ...prev,
+                { id: `s_${Date.now()}`, name: snippetName.trim(), command: snippetCmd.trim() },
+              ])
+              setSnippetName('')
+              setSnippetCmd('')
+            }}
+            className="h-9 px-3 rounded-lg text-sm text-text-2 bg-surface hover:bg-surface-hi"
+          >
+            +
+          </button>
+        </div>
+
         <label className="block text-[12px] text-text-2 mb-1.5">Perfis de shell (opcional)</label>
         <div className="mb-2 flex flex-col gap-1">
           {profiles.map((p, i) => (
@@ -141,6 +203,59 @@ export default function ProjectModal({ project, onSave, onCancel }) {
             +
           </button>
         </div>
+
+        <label className="block text-[12px] text-text-2 mb-1.5">Allowlist do guard (regex)</label>
+        <div className="mb-2 flex flex-col gap-1">
+          {guardAllowlist.map((pattern, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 text-[12px] font-mono bg-bg-term border border-border-soft rounded-lg px-2 h-8"
+            >
+              <span className="flex-1 text-text truncate">{pattern}</span>
+              <button
+                type="button"
+                onClick={() => setGuardAllowlist((prev) => prev.filter((_, j) => j !== i))}
+                className="w-5 h-5 rounded text-text-3 hover:text-red hover:bg-surface-hi"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-4">
+          <input
+            value={allowlistInput}
+            onChange={(e) => setAllowlistInput(e.target.value)}
+            placeholder="ex: ^npm (test|install)"
+            className="flex-1 h-9 px-3 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const p = allowlistInput.trim()
+              if (!p) return
+              try { new RegExp(p) } catch { return }
+              setGuardAllowlist((prev) => [...prev, p])
+              setAllowlistInput('')
+            }}
+            className="h-9 px-3 rounded-lg text-sm text-text-2 bg-surface hover:bg-surface-hi"
+          >
+            +
+          </button>
+        </div>
+
+        <label className="block text-[12px] text-text-2 mb-1.5">Tema do terminal</label>
+        <select
+          value={terminalTheme}
+          onChange={(e) => setTerminalTheme(e.target.value)}
+          className="w-full h-9 px-3 mb-4 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+        >
+          {TERMINAL_THEMES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
 
         <label className="block text-[12px] text-text-2 mb-2">Cor</label>
         <div className="flex gap-2 mb-6">
