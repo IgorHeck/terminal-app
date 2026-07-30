@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { TERMINAL_THEMES } from '../hooks/useTweaks.js'
 
 const COLORS = [
   '#6366f1',
@@ -18,6 +19,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
   const [color, setColor] = useState(COLORS[0])
   const [cwd, setCwd] = useState('')
   const [shell, setShell] = useState('')
+  const [terminalTheme, setTerminalTheme] = useState('auto')
   const [profiles, setProfiles] = useState([])
   const [profName, setProfName] = useState('')
   const [profShell, setProfShell] = useState(SHELLS[0])
@@ -28,6 +30,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       setColor(project.color || COLORS[0])
       setCwd(project.cwd || '')
       setShell(project.shell || '')
+      setTerminalTheme(project.terminalTheme || 'auto')
       setProfiles(project.profiles || [])
     }
   }, [project])
@@ -47,6 +50,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       color,
       cwd: cwd.trim(),
       shell: shell.trim() || null,
+      terminalTheme: terminalTheme || 'auto',
       profiles,
     })
   }
@@ -141,6 +145,19 @@ export default function ProjectModal({ project, onSave, onCancel }) {
             +
           </button>
         </div>
+
+        <label className="block text-[12px] text-text-2 mb-1.5">Tema do terminal</label>
+        <select
+          value={terminalTheme}
+          onChange={(e) => setTerminalTheme(e.target.value)}
+          className="w-full h-9 px-3 mb-4 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+        >
+          {TERMINAL_THEMES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
 
         <label className="block text-[12px] text-text-2 mb-2">Cor</label>
         <div className="flex gap-2 mb-6">

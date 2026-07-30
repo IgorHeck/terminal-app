@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { TERMINAL_THEME_PALETTES } from '../hooks/useTweaks.js'
 
 const BASE_THEME = {
   background: '#0b0b0d',
@@ -18,7 +19,12 @@ const BASE_THEME = {
   brightBlack: '#56565f',
 }
 
-function buildTheme() {
+function buildTheme(terminalTheme) {
+  // Paleta fixa quando o projeto tem tema definido
+  if (terminalTheme && terminalTheme !== 'auto' && TERMINAL_THEME_PALETTES[terminalTheme]) {
+    return TERMINAL_THEME_PALETTES[terminalTheme]
+  }
+  // Modo automático: deriva cursor/blue do acento CSS global
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim()
   const [r, g, b] = (raw || '99 102 241').split(/\s+/)
   const rgb = `rgb(${r}, ${g}, ${b})`
@@ -30,7 +36,7 @@ function buildTheme() {
   }
 }
 
-export default function Terminal({ tab, active, accentKey }) {
+export default function Terminal({ tab, active, accentKey, terminalTheme }) {
   const hostRef = useRef(null)
   const termRef = useRef(null)
   const fitRef = useRef(null)
@@ -55,7 +61,7 @@ export default function Terminal({ tab, active, accentKey }) {
       fontSize: 13,
       lineHeight: 1.35,
       cursorBlink: true,
-      theme: buildTheme(),
+      theme: buildTheme(terminalTheme),
       allowProposedApi: true,
     })
 
@@ -132,10 +138,10 @@ export default function Terminal({ tab, active, accentKey }) {
     }
   }, [searchOpen])
 
-  // re-aplica o tema quando o acento muda (tweak)
+  // re-aplica o tema quando o acento ou o tema do projeto muda
   useEffect(() => {
-    if (termRef.current) termRef.current.options.theme = buildTheme()
-  }, [accentKey])
+    if (termRef.current) termRef.current.options.theme = buildTheme(terminalTheme)
+  }, [accentKey, terminalTheme])
 
   // re-fit ao tornar-se ativo
   useEffect(() => {

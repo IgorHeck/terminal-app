@@ -8,7 +8,7 @@ const MIN_FRAC = 0.15
 // Renderiza os panes (terminais lado a lado) de uma aba — DESIGN.md §13 (split).
 // Cada pane é um PTY próprio; a largura é controlada via flex-grow (grow ratio),
 // permitindo arrastar a divisória entre pares adjacentes.
-export default function TerminalPanes({ tab, active, accentKey, onClosePane }) {
+export default function TerminalPanes({ tab, active, accentKey, terminalTheme, onClosePane }) {
   const panes = tab.panes || []
   const containerRef = useRef(null)
 
@@ -69,7 +69,7 @@ export default function TerminalPanes({ tab, active, accentKey, onClosePane }) {
                 ×
               </button>
             )}
-            <Terminal tab={{ ptyId }} active={active} accentKey={accentKey} />
+            <Terminal tab={{ ptyId }} active={active} accentKey={accentKey} terminalTheme={terminalTheme} />
           </div>
           {i < panes.length - 1 && (
             <Divider axis="x" onPointerDown={(e) => startDrag(i, e)} />

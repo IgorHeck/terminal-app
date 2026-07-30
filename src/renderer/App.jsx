@@ -398,6 +398,7 @@ function AppLayout() {
                       tab={t}
                       active={t.id === activeTabId}
                       accentKey={tweaks.accent}
+                      terminalTheme={activeProject?.terminalTheme || 'auto'}
                       onClosePane={(ptyId) => closePane(activeProjectId, t.id, ptyId)}
                     />
                   ))}
