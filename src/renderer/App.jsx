@@ -16,6 +16,7 @@ import ConfirmModal from './components/ConfirmModal.jsx'
 import RunProcessModal from './components/RunProcessModal.jsx'
 import SettingsPanel from './components/SettingsPanel.jsx'
 import CommandPalette from './components/CommandPalette.jsx'
+import SearchPanel from './components/SearchPanel.jsx'
 import Divider from './components/Divider.jsx'
 import { useTweaks } from './hooks/useTweaks.js'
 import { useResizable } from './hooks/useResizable.js'
@@ -190,16 +191,9 @@ function AppLayout() {
     return () => clearInterval(timer)
   }, [tweaks.autoFetchInterval, activeProjectId])
 
-  const handleSelectView = useCallback(
-    (view) => {
-      if (view === 'search') {
-        setPaletteOpen(true)
-      } else {
-        setActiveView(view)
-      }
-    },
-    []
-  )
+  const handleSelectView = useCallback((view) => {
+    setActiveView(view)
+  }, [])
 
   const openGitView = useCallback(() => setActiveView('git'), [])
 
@@ -295,8 +289,9 @@ function AppLayout() {
     [activeProjectId, openFile]
   )
 
-  // Mostra painel secundário apenas em modo explorer ou git
-  const showSecondaryPanel = activeProject && (activeView === 'explorer' || activeView === 'git')
+  // Mostra painel secundário em modo explorer, git ou search
+  const showSecondaryPanel =
+    activeProject && (activeView === 'explorer' || activeView === 'git' || activeView === 'search')
 
   return (
     <div className="flex flex-col h-full">
@@ -336,6 +331,12 @@ function AppLayout() {
               <GitPanel
                 width={explorerWidth}
                 onOpenDiff={(meta) => openDiff(activeProjectId, meta)}
+              />
+            ) : activeView === 'search' ? (
+              <SearchPanel
+                projectId={activeProjectId}
+                width={explorerWidth}
+                onOpenFile={(entry) => openFile(activeProjectId, entry)}
               />
             ) : (
               <FileTree

@@ -277,6 +277,57 @@ safeHandle('fs:searchFiles', async (_e, projectId, query) => {
   return results
 })
 
+// Busca por conteúdo no projeto (12.1): pesquisa recursiva com Node.js
+async function searchContentRecursive(dir, query, results, limit = 300) {
+  if (results.length >= limit) return
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  const lowerQuery = query.toLowerCase()
+  for (const e of entries) {
+    if (results.length >= limit) break
+    if (e.isDirectory()) {
+      if (!IGNORE_DIRS.has(e.name)) {
+        await searchContentRecursive(join(dir, e.name), query, results, limit)
+      }
+    } else {
+      const filePath = join(dir, e.name)
+      try {
+        const st = await stat(filePath)
+        if (st.size > 512 * 1024) continue // pula arquivos > 512 KB
+        const buf = await readFile(filePath)
+        if (buf.includes(0)) continue // pula binários
+        const text = buf.toString('utf8')
+        const lines = text.split('\n')
+        for (let i = 0; i < lines.length && results.length < limit; i++) {
+          if (lines[i].toLowerCase().includes(lowerQuery)) {
+            results.push({
+              path: filePath,
+              line: i + 1,
+              text: lines[i].slice(0, 200),
+            })
+          }
+        }
+      } catch {
+        // arquivo inacessível — ignorar
+      }
+    }
+  }
+}
+
+safeHandle('fs:searchContent', async (_e, projectId, query) => {
+  if (!query || query.trim().length < 2) return []
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  const cwd = resolve(expandHome(project.cwd))
+  const results = []
+  await searchContentRecursive(cwd, query.trim(), results)
+  return results
+})
+
 safeHandle('fs:readFile', async (_e, filePath) => {
   const abs = resolveInScope(filePath)
   const st = await stat(abs)

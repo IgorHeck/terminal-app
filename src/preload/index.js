@@ -50,6 +50,7 @@ const api = {
       return () => ipcRenderer.removeListener('fs:fileChanged', handler)
     },
     searchFiles: (projectId, query) => ipcRenderer.invoke('fs:searchFiles', projectId, query),
+    searchContent: (projectId, query) => ipcRenderer.invoke('fs:searchContent', projectId, query),
   },
   session: {
     load: () => ipcRenderer.invoke('session:load'),
