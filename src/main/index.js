@@ -63,6 +63,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 let mainWindow = null
 
+// Mapa WebContents.id → projectId para janelas de projeto secundárias (12.4)
+const windowStartupProjects = new Map()
+
 // ---------------------------------------------------------------
 // Log de segurança
 // ---------------------------------------------------------------
@@ -122,14 +125,48 @@ function createWindow() {
 // ---------------------------------------------------------------
 // IPC — Controles de janela (title bar customizada, frame:false)
 // ---------------------------------------------------------------
-ipcMain.on('window:minimize', () => mainWindow?.minimize())
-ipcMain.on('window:maximize', () => {
-  if (!mainWindow) return
-  if (mainWindow.isMaximized()) mainWindow.unmaximize()
-  else mainWindow.maximize()
+ipcMain.on('window:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize())
+ipcMain.on('window:maximize', (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender)
+  if (!win) return
+  if (win.isMaximized()) win.unmaximize()
+  else win.maximize()
 })
-ipcMain.on('window:close', () => mainWindow?.close())
-ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false)
+ipcMain.on('window:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close())
+ipcMain.handle('window:isMaximized', (e) => BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false)
+
+// Abre um projeto em janela separada (12.4)
+ipcMain.handle('window:openProject', (_e, projectId) => {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 820,
+    minWidth: 900,
+    minHeight: 560,
+    backgroundColor: '#0c0c0e',
+    frame: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  })
+  win.on('maximize', () => win.webContents.send('window:maximized', true))
+  win.on('unmaximize', () => win.webContents.send('window:maximized', false))
+  windowStartupProjects.set(win.webContents.id, projectId)
+  win.webContents.on('destroyed', () => windowStartupProjects.delete(win.webContents.id))
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    win.loadURL(process.env.ELECTRON_RENDERER_URL)
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+})
+
+// Retorna o projectId de startup para a janela que chama (null para a janela principal)
+ipcMain.handle('window:getStartupProject', (e) => {
+  return windowStartupProjects.get(e.sender.id) ?? null
+})
 
 // ---------------------------------------------------------------
 // IPC — Filesystem (explorador + editor, somente leitura)

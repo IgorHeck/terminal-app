@@ -145,6 +145,8 @@ const api = {
     maximize: () => ipcRenderer.send('window:maximize'),
     close: () => ipcRenderer.send('window:close'),
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+    openProject: (projectId) => ipcRenderer.invoke('window:openProject', projectId),
+    getStartupProject: () => ipcRenderer.invoke('window:getStartupProject'),
     onMaximizeChange: (cb) => {
       const handler = (_e, val) => cb(val)
       ipcRenderer.on('window:maximized', handler)

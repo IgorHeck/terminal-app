@@ -26,7 +26,9 @@ export function ProjectsProvider({ children }) {
 
       dispatch({ type: 'LOADED', projects: projectList })
 
-      const savedActiveId = session.activeProjectId
+      // Janelas de projeto secundárias têm um startupProject injetado pelo main (12.4)
+      const startupProjectId = await window.api.win.getStartupProject()
+      const savedActiveId = startupProjectId || session.activeProjectId
       if (savedActiveId && projectList.some((p) => p.id === savedActiveId)) {
         dispatch({ type: 'SET_ACTIVE', id: savedActiveId })
       } else if (projectList.length) {

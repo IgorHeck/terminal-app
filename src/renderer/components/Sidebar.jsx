@@ -136,6 +136,16 @@ export default function Sidebar({
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
+                        window.api.win.openProject(project.id)
+                      }}
+                      className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi text-xs"
+                      title="Abrir em nova janela"
+                    >
+                      ⧉
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
                         onEdit(project)
                       }}
                       className="w-[18px] h-[18px] rounded text-text-3 hover:text-text hover:bg-surface-hi text-xs"
