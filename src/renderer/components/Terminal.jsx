@@ -4,7 +4,9 @@ import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
+import { SerializeAddon } from '@xterm/addon-serialize'
 import { TERMINAL_THEME_PALETTES } from '../hooks/useTweaks.js'
+import { useTerminals } from '../contexts/TerminalsContext.jsx'
 
 const BASE_THEME = {
   background: '#0b0b0d',
@@ -41,8 +43,11 @@ export default function Terminal({ tab, active, accentKey, terminalTheme }) {
   const termRef = useRef(null)
   const fitRef = useRef(null)
   const searchAddonRef = useRef(null)
+  const serializeAddonRef = useRef(null)
   const searchOpenRef = useRef(false)
   const searchInputRef = useRef(null)
+  const { getScrollback, clearScrollback, registerSerializer, unregisterSerializer } =
+    useTerminals() || {}
 
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -67,10 +72,12 @@ export default function Terminal({ tab, active, accentKey, terminalTheme }) {
 
     const fit = new FitAddon()
     const search = new SearchAddon()
+    const serialize = new SerializeAddon()
     const webLinks = new WebLinksAddon()
 
     term.loadAddon(fit)
     term.loadAddon(search)
+    term.loadAddon(serialize)
     term.loadAddon(webLinks)
     term.open(hostRef.current)
 
@@ -87,6 +94,17 @@ export default function Terminal({ tab, active, accentKey, terminalTheme }) {
     termRef.current = term
     fitRef.current = fit
     searchAddonRef.current = search
+    serializeAddonRef.current = serialize
+
+    // Restaura scrollback salvo na sessão anterior
+    const saved = getScrollback?.(tab.ptyId)
+    if (saved) {
+      term.write(saved)
+      clearScrollback?.(tab.ptyId)
+    }
+
+    // Registra função de serialização para o save de sessão
+    registerSerializer?.(tab.ptyId, () => serialize.serialize())
 
     // Ctrl+F abre busca; Escape fecha quando busca está aberta
     term.attachCustomKeyEventHandler((e) => {
@@ -123,6 +141,7 @@ export default function Terminal({ tab, active, accentKey, terminalTheme }) {
     ro.observe(hostRef.current)
 
     return () => {
+      unregisterSerializer?.(tab.ptyId)
       onData.dispose()
       offData()
       ro.disconnect()

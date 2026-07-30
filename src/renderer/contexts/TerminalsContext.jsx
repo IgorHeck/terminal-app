@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react'
+import React, { createContext, useContext, useReducer, useCallback, useRef } from 'react'
 
 const TerminalsContext = createContext(null)
 
@@ -78,6 +78,46 @@ const initialState = { tabsByProject: {}, activeTabByProject: {} }
 export function TerminalsProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
+  // Mapa ptyId → serializado (string do xterm-serialize) para restauração de scrollback (12.3).
+  // Ephemeral (in-memory); populado pela sessão carregada e pela serialização antes do save.
+  const scrollbackRef = useRef(new Map()) // ptyId → string
+  // Mapa ptyId → fn de serialização registrada pelo Terminal ao montar
+  const serializersRef = useRef(new Map()) // ptyId → () => string
+
+  const setScrollback = useCallback((ptyId, data) => {
+    scrollbackRef.current.set(ptyId, data)
+  }, [])
+
+  const getScrollback = useCallback((ptyId) => {
+    return scrollbackRef.current.get(ptyId) || null
+  }, [])
+
+  const clearScrollback = useCallback((ptyId) => {
+    scrollbackRef.current.delete(ptyId)
+  }, [])
+
+  const registerSerializer = useCallback((ptyId, fn) => {
+    serializersRef.current.set(ptyId, fn)
+  }, [])
+
+  const unregisterSerializer = useCallback((ptyId) => {
+    serializersRef.current.delete(ptyId)
+  }, [])
+
+  // Serializa todos os terminais ativos — chamado durante o save de sessão.
+  // Retorna map { ptyId → string } para ser incluído no snapshot.
+  const serializeAll = useCallback(() => {
+    const result = {}
+    for (const [ptyId, fn] of serializersRef.current) {
+      try {
+        result[ptyId] = fn()
+      } catch {
+        // serialização falhou para este terminal — ignorar
+      }
+    }
+    return result
+  }, [])
+
   const newTerminal = useCallback(
     async (project, kind = 'shell', profile = null) => {
       const ptyId = await window.api.pty.create({
@@ -123,14 +163,24 @@ export function TerminalsProvider({ children }) {
   }, [])
 
   // Restaura as abas de um projeto a partir do snapshot de sessão.
-  // Cria PTYs reais para cada pane — o scrollback não é restaurado (Fase 12.3).
+  // Cria PTYs reais para cada pane e mapeia o scrollback salvo para o novo ptyId (12.3).
   const restoreProjectSession = useCallback(async (project, savedTabs, activeTabId) => {
     const hydratedTabs = await Promise.all(
       savedTabs.map(async (savedTab) => {
         const panes = await Promise.all(
-          Array.from({ length: savedTab.paneCount || 1 }, () =>
-            window.api.pty.create({ projectId: project.id, shell: project.shell, cwd: project.cwd })
-          )
+          Array.from({ length: savedTab.paneCount || 1 }, async (_, idx) => {
+            const ptyId = await window.api.pty.create({
+              projectId: project.id,
+              shell: project.shell,
+              cwd: project.cwd,
+            })
+            // Associa scrollback salvo ao novo ptyId
+            const savedScrollback = savedTab.scrollback?.[idx]
+            if (savedScrollback) {
+              scrollbackRef.current.set(ptyId, savedScrollback)
+            }
+            return ptyId
+          })
         )
         return {
           id: savedTab.id,
@@ -161,6 +211,12 @@ export function TerminalsProvider({ children }) {
         closePane,
         selectTab,
         restoreProjectSession,
+        setScrollback,
+        getScrollback,
+        clearScrollback,
+        registerSerializer,
+        unregisterSerializer,
+        serializeAll,
       }}
     >
       {children}

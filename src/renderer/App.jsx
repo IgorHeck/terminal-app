@@ -51,6 +51,7 @@ function AppLayout() {
     splitTerminal,
     closePane,
     selectTab,
+    serializeAll: serializeTerminals,
   } = useTerminals()
   const {
     openFilesByProject,
@@ -119,6 +120,8 @@ function AppLayout() {
   useEffect(() => {
     if (!sessionLoaded) return
     const timer = setTimeout(() => {
+      // Serializa scrollback de todos os terminais ativos antes de salvar
+      const scrollbackMap = serializeTerminals?.() || {}
       const byProject = {}
       for (const proj of projects) {
         byProject[proj.id] = {
@@ -127,6 +130,8 @@ function AppLayout() {
             name: t.name,
             kind: t.kind,
             paneCount: t.panes.length,
+            // scrollback por pane index
+            scrollback: (t.panes || []).map((ptyId) => scrollbackMap[ptyId] || null),
           })),
           activeTabId: activeTabByProject[proj.id] || null,
           openFiles: openFilesByProject[proj.id] || [],
