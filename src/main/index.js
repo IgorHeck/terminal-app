@@ -35,6 +35,10 @@ import {
   stashDrop,
   getCommitDetail,
   applyPatch,
+  getLog,
+  listWorktrees,
+  addWorktree,
+  removeWorktree,
 } from './git.js'
 import {
   getAuthState,
@@ -550,6 +554,34 @@ safeHandle('git:applyPatch', async (_e, projectId, patch, opts) => {
   const project = getProjects().find((p) => p.id === projectId)
   if (!project) throw new Error('projeto não encontrado')
   return applyPatch(resolve(expandHome(project.cwd)), patch, opts)
+})
+
+// --- 12.5 Log com parentesco (graph) ---
+
+safeHandle('git:log', async (_e, projectId, limit) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return getLog(resolve(expandHome(project.cwd)), limit || 50)
+})
+
+// --- 12.6 Worktrees ---
+
+safeHandle('git:worktreeList', async (_e, projectId) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return listWorktrees(resolve(expandHome(project.cwd)))
+})
+
+safeHandle('git:worktreeAdd', async (_e, projectId, worktreePath, branch, newBranch) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return addWorktree(resolve(expandHome(project.cwd)), worktreePath, branch, newBranch)
+})
+
+safeHandle('git:worktreeRemove', async (_e, projectId, worktreePath, force) => {
+  const project = getProjects().find((p) => p.id === projectId)
+  if (!project) throw new Error('projeto não encontrado')
+  return removeWorktree(resolve(expandHome(project.cwd)), worktreePath, force)
 })
 
 // ---------------------------------------------------------------

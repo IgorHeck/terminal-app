@@ -94,6 +94,14 @@ const api = {
     // 8.6 Apply patch (hunk staging)
     applyPatch: (projectId, patch, opts) =>
       ipcRenderer.invoke('git:applyPatch', projectId, patch, opts),
+    // 12.5 Log com parentesco (graph)
+    log: (projectId, limit) => ipcRenderer.invoke('git:log', projectId, limit),
+    // 12.6 Worktrees
+    worktreeList: (projectId) => ipcRenderer.invoke('git:worktreeList', projectId),
+    worktreeAdd: (projectId, path, branch, newBranch) =>
+      ipcRenderer.invoke('git:worktreeAdd', projectId, path, branch, newBranch),
+    worktreeRemove: (projectId, path, force) =>
+      ipcRenderer.invoke('git:worktreeRemove', projectId, path, force),
   },
   github: {
     getAuthState: () => ipcRenderer.invoke('github:authState'),

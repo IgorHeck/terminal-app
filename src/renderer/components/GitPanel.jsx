@@ -3,6 +3,7 @@ import { useGit } from '../contexts/GitContext.jsx'
 import { useProjects } from '../contexts/ProjectsContext.jsx'
 import { useGitHub } from '../contexts/GitHubContext.jsx'
 import GitHubPanel from './GitHubPanel.jsx'
+import CommitGraph from './CommitGraph.jsx'
 
 // ============================================================
 // GitPanel — painel git completo (Fases 8–9).
@@ -758,69 +759,60 @@ function StashSection({ projectId, onDone }) {
 }
 
 // Log de commits
-function LogSection({ commits, projectId }) {
+function LogSection({ projectId }) {
   const [open, setOpen] = useState(true)
-  const [selected, setSelected] = useState(null) // hash selecionado
-  const [detail, setDetail] = useState(null) // { info, diff }
+  const [selectedHash, setSelectedHash] = useState(null)
+  const [detail, setDetail] = useState(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [graphMode, setGraphMode] = useState(true)
 
   const loadDetail = useCallback(async (hash) => {
-    if (selected === hash) { setSelected(null); setDetail(null); return }
-    setSelected(hash)
+    if (selectedHash === hash) { setSelectedHash(null); setDetail(null); return }
+    setSelectedHash(hash)
     setLoadingDetail(true)
     const res = await window.api.git.commitDetail(projectId, hash)
     setLoadingDetail(false)
     if (res.ok) setDetail(res.data)
-  }, [selected, projectId])
-
-  if (!commits?.length) return null
+  }, [selectedHash, projectId])
 
   return (
-    <div className="border-b border-border-soft">
+    <div className="border-b border-border-soft flex flex-col">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface text-left"
+        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-surface text-left flex-shrink-0"
       >
         <span className="text-[10px] font-semibold uppercase tracking-wider text-text-3 flex-1">
-          Commits recentes
+          Commits
         </span>
+        <button
+          type="button"
+          title={graphMode ? 'Modo lista' : 'Modo graph'}
+          onClick={(e) => { e.stopPropagation(); setGraphMode((v) => !v) }}
+          className="text-[10px] text-text-4 hover:text-text-2 px-1"
+        >
+          {graphMode ? '⋮' : '⎇'}
+        </button>
         <span className="text-text-4 text-[10px]">{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div>
-          {commits.slice(0, 15).map((c) => (
-            <div key={c.hash}>
-              <button
-                type="button"
-                onClick={() => loadDetail(c.hash)}
-                className="w-full px-3 py-1.5 hover:bg-surface text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-text-4 text-[10px] font-mono flex-shrink-0">
-                    {c.shortHash}
-                  </span>
-                  <span className="text-text-2 text-[11px] font-mono truncate">{c.subject}</span>
-                </div>
-                <div className="text-text-4 text-[10px] font-mono mt-0.5">
-                  {c.author} · {c.relativeDate}
-                </div>
-              </button>
+        <div className="max-h-72 overflow-auto flex flex-col">
+          {graphMode ? (
+            <CommitGraph projectId={projectId} onSelectCommit={loadDetail} />
+          ) : null}
 
-              {selected === c.hash && (
-                <div className="mx-3 mb-2 bg-surface rounded border border-border-soft overflow-hidden">
-                  {loadingDetail ? (
-                    <div className="p-2 text-[10px] text-text-4">Carregando…</div>
-                  ) : detail ? (
-                    <pre className="p-2 text-[10px] font-mono text-text-3 overflow-x-auto whitespace-pre max-h-48 overflow-y-auto">
-                      {detail.diff || 'Sem diff disponível'}
-                    </pre>
-                  ) : null}
-                </div>
-              )}
+          {selectedHash && (
+            <div className="mx-3 mb-2 bg-surface rounded border border-border-soft overflow-hidden flex-shrink-0">
+              {loadingDetail ? (
+                <div className="p-2 text-[10px] text-text-4">Carregando…</div>
+              ) : detail ? (
+                <pre className="p-2 text-[10px] font-mono text-text-3 overflow-x-auto whitespace-pre max-h-48 overflow-y-auto">
+                  {detail.diff || 'Sem diff disponível'}
+                </pre>
+              ) : null}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
@@ -988,7 +980,7 @@ export default function GitPanel({ width = 244, onOpenDiff }) {
           <StashSection projectId={activeProjectId} onDone={refresh} />
 
           {/* Log de commits */}
-          <LogSection commits={lastCommits} projectId={activeProjectId} />
+          <LogSection projectId={activeProjectId} />
         </div>
       )}
     </div>

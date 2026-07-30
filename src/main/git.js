@@ -405,6 +405,98 @@ export async function getCommitDetail(cwd, hash) {
   return { info: commits[0] || null, diff: diffOut }
 }
 
+// ---------------------------------------------------------------
+// API pública — log com parentesco (12.5 — graph de commits)
+// ---------------------------------------------------------------
+
+const GRAPH_FORMAT = '%H\x1f%P\x1f%h\x1f%s\x1f%an\x1f%ar\x1f%D'
+
+/**
+ * @typedef {{ hash: string, parents: string[], shortHash: string, subject: string, author: string, relativeDate: string, refs: string }} GraphCommit
+ */
+
+/**
+ * Retorna os últimos N commits com hash dos pais para renderizar o graph.
+ * @param {string} cwd
+ * @param {number} limit
+ * @returns {Promise<GraphCommit[]>}
+ */
+export async function getLog(cwd, limit = 50) {
+  const out = await execGit(['log', `--format=${GRAPH_FORMAT}`, `--max-count=${limit}`], cwd).catch(() => '')
+  return out
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [hash, parentsRaw, shortHash, subject, author, relativeDate, refs] = line.split('\x1f')
+      const parents = (parentsRaw || '').trim() ? parentsRaw.trim().split(' ') : []
+      return { hash, parents, shortHash, subject, author, relativeDate, refs: refs || '' }
+    })
+}
+
+// ---------------------------------------------------------------
+// API pública — worktrees (12.6)
+// ---------------------------------------------------------------
+
+/**
+ * @typedef {{ path: string, head: string, branch: string, bare: boolean, locked: boolean }} WorktreeEntry
+ */
+
+/**
+ * Lista os worktrees do repositório.
+ * @param {string} cwd
+ * @returns {Promise<WorktreeEntry[]>}
+ */
+export async function listWorktrees(cwd) {
+  const out = await execGit(['worktree', 'list', '--porcelain'], cwd).catch(() => '')
+  const result = []
+  let current = {}
+  for (const line of out.split('\n')) {
+    if (!line) {
+      if (current.path) result.push(current)
+      current = {}
+    } else if (line.startsWith('worktree ')) {
+      current.path = line.slice('worktree '.length).trim()
+    } else if (line.startsWith('HEAD ')) {
+      current.head = line.slice('HEAD '.length).trim()
+    } else if (line.startsWith('branch ')) {
+      current.branch = line.slice('branch '.length).trim().replace('refs/heads/', '')
+    } else if (line === 'bare') {
+      current.bare = true
+    } else if (line.startsWith('locked')) {
+      current.locked = true
+    }
+  }
+  if (current.path) result.push(current)
+  return result
+}
+
+/**
+ * Adiciona um novo worktree.
+ * @param {string} cwd
+ * @param {string} worktreePath  caminho para o novo worktree
+ * @param {string} branch  branch a ser checked out (pode ser nova)
+ * @param {boolean} newBranch  se true, cria a branch com -b
+ */
+export async function addWorktree(cwd, worktreePath, branch, newBranch = false) {
+  const args = ['worktree', 'add']
+  if (newBranch) args.push('-b')
+  args.push(worktreePath, branch)
+  return execGit(args, cwd)
+}
+
+/**
+ * Remove um worktree.
+ * @param {string} cwd
+ * @param {string} worktreePath
+ * @param {boolean} force
+ */
+export async function removeWorktree(cwd, worktreePath, force = false) {
+  const args = ['worktree', 'remove']
+  if (force) args.push('--force')
+  args.push(worktreePath)
+  return execGit(args, cwd)
+}
+
 // Apply patch (hunk staging)
 
 export async function applyPatch(cwd, patch, { reverse = false, cached = true } = {}) {
