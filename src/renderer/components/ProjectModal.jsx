@@ -20,6 +20,8 @@ export default function ProjectModal({ project, onSave, onCancel }) {
   const [cwd, setCwd] = useState('')
   const [shell, setShell] = useState('')
   const [terminalTheme, setTerminalTheme] = useState('auto')
+  const [guardAllowlist, setGuardAllowlist] = useState([])
+  const [allowlistInput, setAllowlistInput] = useState('')
   const [profiles, setProfiles] = useState([])
   const [profName, setProfName] = useState('')
   const [profShell, setProfShell] = useState(SHELLS[0])
@@ -31,6 +33,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       setCwd(project.cwd || '')
       setShell(project.shell || '')
       setTerminalTheme(project.terminalTheme || 'auto')
+      setGuardAllowlist(project.guardAllowlist || [])
       setProfiles(project.profiles || [])
     }
   }, [project])
@@ -51,6 +54,7 @@ export default function ProjectModal({ project, onSave, onCancel }) {
       cwd: cwd.trim(),
       shell: shell.trim() || null,
       terminalTheme: terminalTheme || 'auto',
+      guardAllowlist,
       profiles,
     })
   }
@@ -140,6 +144,46 @@ export default function ProjectModal({ project, onSave, onCancel }) {
           <button
             type="button"
             onClick={addProfile}
+            className="h-9 px-3 rounded-lg text-sm text-text-2 bg-surface hover:bg-surface-hi"
+          >
+            +
+          </button>
+        </div>
+
+        <label className="block text-[12px] text-text-2 mb-1.5">Allowlist do guard (regex)</label>
+        <div className="mb-2 flex flex-col gap-1">
+          {guardAllowlist.map((pattern, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 text-[12px] font-mono bg-bg-term border border-border-soft rounded-lg px-2 h-8"
+            >
+              <span className="flex-1 text-text truncate">{pattern}</span>
+              <button
+                type="button"
+                onClick={() => setGuardAllowlist((prev) => prev.filter((_, j) => j !== i))}
+                className="w-5 h-5 rounded text-text-3 hover:text-red hover:bg-surface-hi"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mb-4">
+          <input
+            value={allowlistInput}
+            onChange={(e) => setAllowlistInput(e.target.value)}
+            placeholder="ex: ^npm (test|install)"
+            className="flex-1 h-9 px-3 bg-bg-term border border-border rounded-lg text-sm text-text font-mono focus:border-accent outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const p = allowlistInput.trim()
+              if (!p) return
+              try { new RegExp(p) } catch { return }
+              setGuardAllowlist((prev) => [...prev, p])
+              setAllowlistInput('')
+            }}
             className="h-9 px-3 rounded-lg text-sm text-text-2 bg-surface hover:bg-surface-hi"
           >
             +

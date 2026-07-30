@@ -34,11 +34,21 @@ const CONFIRM_PATTERNS = [
 
 /**
  * @param {string} input  linha de comando completa
+ * @param {string[]} [allowlistPatterns]  regex strings que são sempre permitidas (allowlist do projeto)
  * @returns {{ action: 'ALLOW'|'CONFIRM'|'BLOCK', reason: string|null }}
  */
-export function checkCommand(input) {
+export function checkCommand(input, allowlistPatterns = []) {
   const cmd = (input || '').trim()
   if (!cmd) return { action: 'ALLOW', reason: null }
+
+  // Allowlist do projeto tem precedência sobre tudo
+  for (const pattern of allowlistPatterns) {
+    try {
+      if (new RegExp(pattern).test(cmd)) return { action: 'ALLOW', reason: null }
+    } catch {
+      // padrão regex inválido — ignorar
+    }
+  }
 
   for (const re of BLOCKED_PATTERNS) {
     if (re.test(cmd)) {
@@ -51,4 +61,32 @@ export function checkCommand(input) {
     }
   }
   return { action: 'ALLOW', reason: null }
+}
+
+/**
+ * Classifica um texto colado multiline.
+ * Cada linha é verificada individualmente; o resultado mais restritivo vence.
+ * @param {string} text  texto completo colado
+ * @param {string[]} [allowlistPatterns]
+ * @returns {{ action: 'ALLOW'|'CONFIRM'|'BLOCK', reason: string|null, lines: string[] }}
+ */
+export function checkPaste(text, allowlistPatterns = []) {
+  const lines = (text || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (!lines.length) return { action: 'ALLOW', reason: null, lines }
+
+  let worstAction = 'ALLOW'
+  let worstReason = null
+
+  const priority = { ALLOW: 0, CONFIRM: 1, BLOCK: 2 }
+
+  for (const line of lines) {
+    const result = checkCommand(line, allowlistPatterns)
+    if (priority[result.action] > priority[worstAction]) {
+      worstAction = result.action
+      worstReason = result.reason
+    }
+    if (worstAction === 'BLOCK') break // não precisa verificar mais
+  }
+
+  return { action: worstAction, reason: worstReason, lines }
 }

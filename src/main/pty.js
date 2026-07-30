@@ -37,6 +37,10 @@ export function getPtyProjectName(ptyId) {
   return ptyProcesses[ptyId]?.projectName || ''
 }
 
+export function getPtyProjectId(ptyId) {
+  return ptyProcesses[ptyId]?.projectId || null
+}
+
 export function writePty(ptyId, data) {
   ptyProcesses[ptyId]?.proc.write(data)
 }

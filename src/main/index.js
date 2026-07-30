@@ -11,8 +11,9 @@ import {
   killPty,
   killAllForProject,
   getPtyProjectName,
+  getPtyProjectId,
 } from './pty.js'
-import { checkCommand } from './guard.js'
+import { checkCommand, checkPaste } from './guard.js'
 import { safeHandle } from './ipc.js'
 import { getProjects, addProject, updateProject, removeProject } from './store.js'
 import { getSession, saveSession } from './session.js'
@@ -619,13 +620,22 @@ ipcMain.handle('pty:create', (_e, { projectId, shell, cwd } = {}) => {
   return ptyId
 })
 
+function getProjectAllowlist(ptyId) {
+  // Obtém a allowlist do projeto dono do pty
+  const projectId = getPtyProjectId ? getPtyProjectId(ptyId) : null
+  if (!projectId) return []
+  const project = getProjects().find((p) => p.id === projectId)
+  return project?.guardAllowlist || []
+}
+
 ipcMain.on('pty:write', (_e, ptyId, data) => {
   // acumula a linha para classificar no Enter
   if (data === '\r' || data === '\n') {
     const command = (lineBuffers[ptyId] || '').trim()
     lineBuffers[ptyId] = ''
     if (command) {
-      const { action, reason } = checkCommand(command)
+      const allowlist = getProjectAllowlist(ptyId)
+      const { action, reason } = checkCommand(command, allowlist)
       const projectName = getPtyProjectName(ptyId)
       if (action === 'BLOCK') {
         writeSecurityLog('BLOCK', projectName, ptyId, command)
@@ -650,6 +660,12 @@ ipcMain.on('pty:write', (_e, ptyId, data) => {
     lineBuffers[ptyId] = (lineBuffers[ptyId] || '') + data
     writePty(ptyId, data)
   }
+})
+
+// Guard v2 — verifica paste multiline antes de enviar ao PTY (12.7)
+safeHandle('guard:checkPaste', (_e, ptyId, text) => {
+  const allowlist = getProjectAllowlist(ptyId)
+  return checkPaste(text, allowlist)
 })
 
 // comando aprovado no modal de confirmação

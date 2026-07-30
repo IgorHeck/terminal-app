@@ -124,7 +124,28 @@ export default function Terminal({ tab, active, accentKey, terminalTheme }) {
     })
 
     // entrada do usuário -> PTY (passa pelo guard no main)
-    const onData = term.onData((data) => window.api.pty.write(tab.ptyId, data))
+    // Guard v2 (12.7): paste multiline → verifica antes de enviar
+    const onData = term.onData(async (data) => {
+      if (data.includes('\n') || data.includes('\r\n')) {
+        // Pode ser um paste multiline — verificar com o guard
+        const res = await window.api.guard.checkPaste(tab.ptyId, data)
+        if (res.ok !== false) {
+          const { action, reason } = res.data || res
+          if (action === 'BLOCK') {
+            term.write(`\r\n\x1b[31m✖ paste bloqueado: ${reason}\x1b[0m\r\n`)
+            return
+          }
+          if (action === 'CONFIRM') {
+            // Usa o canal guard:confirm existente via evento sintético
+            window.api.pty.write(tab.ptyId, '') // sem-op para manter contexto
+            // Emite confirmação para o modal
+            term.write(`\r\n\x1b[33m⚠ paste requer confirmação — use o terminal manualmente\x1b[0m\r\n`)
+            return
+          }
+        }
+      }
+      window.api.pty.write(tab.ptyId, data)
+    })
 
     // saída do PTY -> xterm
     const offData = window.api.pty.onData(({ ptyId, data }) => {

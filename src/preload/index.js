@@ -129,6 +129,9 @@ const api = {
       return () => ipcRenderer.removeListener('github:authChanged', handler)
     },
   },
+  guard: {
+    checkPaste: (ptyId, text) => ipcRenderer.invoke('guard:checkPaste', ptyId, text),
+  },
   app: {
     openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
     reportError: (payload) => ipcRenderer.send('app:reportError', payload),
